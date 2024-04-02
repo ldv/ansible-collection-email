@@ -1,0 +1,38 @@
+namespace: bodsch
+name: email
+
+version: 0.1.0
+
+readme: README.md
+
+authors:
+  - Bodo Schulz <bodo@boone-schulz.de>
+
+description: Collection of Ansible modules to communicate with email systems.
+
+license_file: 'LICENSE'
+
+tags:
+  - email
+  - postfix
+  - dovecot
+
+dependencies:
+  "community.general": "*"
+  "bodsch.core": "*"
+
+repository: https://github.com/bodsch/ansible-collection-email
+documentation: https://github.com/bodsch/ansible-collection-email/README.md
+homepage: https://github.com/bodsch/ansible-collection-email
+issues: https://github.com/bodsch/ansible-collection-email/issues
+
+build_ignore:
+  - "galaxy.yml"
+  - "*.pyc"
+  - "*.retry"
+  - ".ansible-lint"
+  - ".editorconfig"
+  - ".flake8"
+  - ".gitignore"
+  - ".yamllint"
+  - ".github"
