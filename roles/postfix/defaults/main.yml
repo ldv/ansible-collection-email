@@ -1,0 +1,67 @@
+---
+
+postfix_hostname: "{{ ansible_fqdn }}"
+postfix_mailname: "{{ ansible_fqdn }}"
+
+postfix_myorigin: "{{ postfix_mailname_file }}"
+postfix_delay_warning_time: ''
+postfix_compatibility_level: '3'
+
+postfix_handle_mastercf: false
+
+postfix_aliases: []
+postfix_users:
+  sasl_auth: []
+  relay: []
+
+postfix_mydestinations:
+  - $myhostname
+  - "{{ postfix_hostname }}"
+  - localdomain
+  - localhost
+  - localhost.localdomain
+
+postfix_mynetworks:
+  - 127.0.0.0/8
+  - '[::ffff:127.0.0.0]/104'
+  - '[::1]/128'
+
+# /etc/postfix/main.cf
+postfix_disable_vrfy_command: true
+
+postfix_biff: false
+postfix_debug_peer_level: 1
+postfix_readme_directory: false
+postfix_append_dot_mydomain: false
+
+postfix_alias: {}
+postfix_default:
+  # http://www.postfix.org/DATABASE_README.html#types
+  database_type: hash
+postfix_header: {}
+postfix_inet: {}
+postfix_mailbox: {}
+postfix_maillog: {}
+postfix_message: {}
+postfix_postscreen:
+  enable: false
+postfix_proxy: {}
+postfix_queue: {}
+postfix_recipient: {}
+postfix_reject: {}
+postfix_relay: {}
+postfix_sender: {}
+postfix_smtp: {}
+postfix_smtpd:
+  banner: '$myhostname ESMTP $mail_name'
+postfix_transport: {}
+postfix_tls: {}
+postfix_virtual: {}
+postfix_virtual_backends:
+  mysql: []
+
+# /etc/postfix/master.cf
+postfix_master: {}
+postfix_raw_options: []
+
+...

@@ -1,0 +1,9 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+{% if items | count > 0 %}
+# {{ ansible_managed }}
+
+  {% for item in items %}
+    {% set _first, _last = item | postfix_map_data %}
+{{ "{:<40}".format(_first) }} {{ _last }}
+  {% endfor %}
+{% endif %}
