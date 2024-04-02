@@ -1,0 +1,19 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+
+{% if dovecot_authentications.passwdfile is defined and
+      dovecot_authentications.passwdfile | count > 0 %}
+  {% for _type, values in dovecot_authentications.passwdfile.items() %}
+    {% if values | count > 0 %}
+{{ _type }} {
+      {% for k, v in values.items() %}
+        {% if v | bodsch.core.type == "bool" %}
+  {{ "%-27s" | format(k) }} = {{ v | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+        {% else %}
+  {{ "%-27s" | format(k) }} = {{ v }}
+        {% endif %}
+      {% endfor %}
+}
+    {% endif %}
+  {% endfor %}
+{% endif %}

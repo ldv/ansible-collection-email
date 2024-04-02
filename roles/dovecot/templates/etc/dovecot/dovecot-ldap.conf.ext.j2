@@ -1,0 +1,132 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+
+{% if dovecot_ldap.hosts is defined and
+      dovecot_ldap.hosts | count > 0 %}
+hosts                         = {{ dovecot_ldap.hosts | join(' ' ) }}
+{% endif %}
+{% if dovecot_ldap.uris is defined and
+      dovecot_ldap.uris | count > 0 %}
+uris                          = {{ dovecot_ldap.uris | join(' ' ) }}
+{% endif %}
+{% if dovecot_ldap.dn is defined and
+      dovecot_ldap.dn | string | length > 0 %}
+dn                            = {{ dovecot_ldap.dn }}
+{% endif %}
+{% if dovecot_ldap.dnpass is defined and
+      dovecot_ldap.dnpass | string | length > 0 %}
+dnpass                        = {{ dovecot_ldap.dnpass }}
+{% endif %}
+{% if dovecot_ldap.sasl_bind is defined and
+      dovecot_ldap.sasl_bind | string | length > 0 %}
+sasl_bind                     = {{ dovecot_ldap.sasl_bind | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+{% endif %}
+{% if dovecot_ldap.sasl_mech is defined and
+      dovecot_ldap.sasl_mech | string | length > 0 %}
+sasl_mech                     = {{ dovecot_ldap.sasl_mech }}
+{% endif %}
+{% if dovecot_ldap.sasl_realm is defined and
+      dovecot_ldap.sasl_realm | string | length > 0 %}
+sasl_realm                    = {{ dovecot_ldap.sasl_realm }}
+{% endif %}
+{% if dovecot_ldap.sasl_authz_id is defined and
+      dovecot_ldap.sasl_authz_id | string | length > 0 %}
+sasl_authz_id                 = {{ dovecot_ldap.sasl_authz_id }}
+{% endif %}
+{% if dovecot_ldap.tls is defined and
+      dovecot_ldap.tls | string | length > 0 %}
+tls                           = {{ dovecot_ldap.tls | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+  {% if dovecot_ldap.tls_ca_cert_file is defined and
+        dovecot_ldap.tls_ca_cert_file | string | length > 0 %}
+tls_ca_cert_file              = {{ dovecot_ldap.tls_ca_cert_file }}
+  {% endif %}
+  {% if dovecot_ldap.tls_ca_cert_dir is defined and
+        dovecot_ldap.tls_ca_cert_dir | string | length > 0 %}
+tls_ca_cert_dir               = {{ dovecot_ldap.tls_ca_cert_dir }}
+  {% endif %}
+  {% if dovecot_ldap.tls_cipher_suite is defined and
+        dovecot_ldap.tls_cipher_suite | string | length > 0 %}
+tls_cipher_suite              = {{ dovecot_ldap.tls_cipher_suite }}
+  {% endif %}
+  {% if dovecot_ldap.tls_cert_file is defined and
+        dovecot_ldap.tls_cert_file | string | length > 0 %}
+tls_cert_file                 = {{ dovecot_ldap.tls_cert_file }}
+  {% endif %}
+  {% if dovecot_ldap.tls_key_file is defined and
+        dovecot_ldap.tls_key_file | string | length > 0 %}
+tls_key_file                  = {{ dovecot_ldap.tls_key_file }}
+  {% endif %}
+  {% if dovecot_ldap.tls_require_cert is defined and
+        dovecot_ldap.tls_require_cert | string | length > 0 and
+        dovecot_ldap.tls_require_cert in ['never','hard','demand','allow','allow'] %}
+tls_require_cert              = {{ dovecot_ldap.tls_require_cert }}
+  {% endif %}
+{% endif %}
+{% if dovecot_ldap.ldaprc_path is defined and
+      dovecot_ldap.ldaprc_path | string | length > 0 %}
+ldaprc_path                   = {{ dovecot_ldap.ldaprc_path }}
+{% endif %}
+{% if dovecot_ldap.debug_level is defined and
+      dovecot_ldap.debug_level | string | length > 0 and
+      dovecot_ldap.debug_level | int >= -1 %}
+debug_level                   = {{ dovecot_ldap.debug_level }}
+{% endif %}
+{% if dovecot_ldap.auth_bind is defined and
+      dovecot_ldap.auth_bind | string | length > 0 %}
+auth_bind                     = {{ dovecot_ldap.auth_bind | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+{% endif %}
+{% if dovecot_ldap.auth_bind_userdn is defined and
+      dovecot_ldap.auth_bind_userdn | string | length > 0 %}
+auth_bind_userdn              = {{ dovecot_ldap.auth_bind_userdn }}
+{% endif %}
+{% if dovecot_ldap.ldap_version is defined and
+      (dovecot_ldap.ldap_version | int == 2 or
+      dovecot_ldap.ldap_version | int == 3) %}
+ldap_version                  = {{ dovecot_ldap.ldap_version }}
+{% endif %}
+{% if dovecot_ldap.base is defined and
+      dovecot_ldap.base | string | length > 0 %}
+base                          = {{ dovecot_ldap.base }}
+{% endif %}
+{% if dovecot_ldap.deref is defined and
+      dovecot_ldap.deref | string | length > 0 and
+      dovecot_ldap.deref in ['never','searching','finding','always'] %}
+deref                         = {{ dovecot_ldap.deref }}
+{% endif %}
+{% if dovecot_ldap.scope is defined and
+      dovecot_ldap.scope | string | length > 0 and
+      dovecot_ldap.scope in ['base','onelevel','subtree'] %}
+scope                         = {{ dovecot_ldap.scope }}
+{% endif %}
+{% if dovecot_ldap.user_attrs is defined and
+      dovecot_ldap.user_attrs | count > 0 %}
+user_attrs                    = {{ dovecot_ldap.user_attrs | join(',') }}
+{% endif %}
+{% if dovecot_ldap.user_filter is defined and
+      dovecot_ldap.user_filter | string | length > 0 %}
+user_filter                   = {{ dovecot_ldap.user_filter }}
+{% endif %}
+{% if dovecot_ldap.pass_attrs is defined and
+      dovecot_ldap.pass_attrs | count > 0 %}
+pass_attrs                    = {{ dovecot_ldap.pass_attrs | join(',') }}
+{% endif %}
+{% if dovecot_ldap.pass_filter is defined and
+      dovecot_ldap.pass_filter | count > 0 %}
+pass_filter                   = {{ dovecot_ldap.pass_filter }}
+{% endif %}
+{% if dovecot_ldap.iterate_attrs is defined and
+      dovecot_ldap.iterate_attrs | string | length > 0 %}
+iterate_attrs                 = {{ dovecot_ldap.iterate_attrs }}
+{% endif %}
+{% if dovecot_ldap.iterate_filter is defined and
+      dovecot_ldap.iterate_filter | string | length > 0 %}
+iterate_filter                = {{ dovecot_ldap.iterate_filter }}
+{% endif %}
+{% if dovecot_ldap.default_pass_scheme is defined and
+      dovecot_ldap.default_pass_scheme | string | length > 0 %}
+default_pass_scheme           = {{ dovecot_ldap.default_pass_scheme }}
+{% endif %}
+{% if dovecot_ldap.blocking is defined and
+      dovecot_ldap.blocking | string | length > 0 %}
+blocking                      = {{ dovecot_ldap.blocking | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+{% endif %}

@@ -1,0 +1,34 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+
+{% if dovecot_sql.driver is defined and
+      dovecot_sql.driver | string | length > 0 and
+      dovecot_sql.driver in ['mysql','pgsql','sqlite'] %}
+driver                        = {{ dovecot_sql.driver }}
+{% endif %}
+{% if dovecot_sql.connect is defined and
+      dovecot_sql.connect | string | length > 0 %}
+connect                       = {{ dovecot_sql.connect }}
+{% endif %}
+{% if dovecot_sql.connects is defined and
+      dovecot_sql.connects | string | length > 0 %}
+connect                       = {{ dovecot_sql.connects | database_connection }}
+{% endif %}
+
+{% if dovecot_sql.default_pass_scheme is defined and
+      dovecot_sql.default_pass_scheme | string | length > 0 %}
+default_pass_scheme           = {{ dovecot_sql.default_pass_scheme }}
+{% endif %}
+
+{% if dovecot_sql.password_query is defined and
+      dovecot_sql.password_query | string | length > 0 %}
+password_query                = {{ dovecot_sql.password_query | replace("\n", " ") | trim }}
+{% endif %}
+{% if dovecot_sql.user_query is defined and
+      dovecot_sql.user_query | string | length > 0 %}
+user_query                    = {{ dovecot_sql.user_query | replace("\n", " ") | trim }}
+{% endif %}
+{% if dovecot_sql.iterate_query is defined and
+      dovecot_sql.iterate_query | string | length > 0 %}
+iterate_query                 = {{ dovecot_sql.iterate_query | replace("\n", " ") | trim }}
+{% endif %}

@@ -1,0 +1,18 @@
+---
+
+dovecot_packages:
+  - dovecot-imapd
+  - dovecot-ldap
+  - dovecot-lmtpd
+  - dovecot-lucene
+  - dovecot-managesieved
+  - dovecot-mysql
+  - dovecot-pgsql
+  - dovecot-pop3d
+  - dovecot-sieve
+  - dovecot-sieve
+  - dovecot-sqlite
+  - dovecot-submissiond
+  - dovecot-antispam
+
+...

@@ -1,0 +1,92 @@
+---
+
+- name: create logging directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ dovecot_logging_directory }}"
+    mode: 0755
+
+- name: create configuration directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ item }}"
+    mode: 0755
+  loop:
+    - /etc/dovecot
+    - /etc/dovecot/conf.d
+    - /etc/dovecot/auth.d
+    - /etc/dovecot/sql.d
+
+- name: create dovecot.conf
+  ansible.builtin.template:
+    src: etc/dovecot/dovecot.conf.j2
+    dest: /etc/dovecot/dovecot.conf
+    backup: true
+    mode: 0644
+  notify:
+    - restart dovecot
+
+- name: create splitted configurations
+  ansible.builtin.template:
+    src: etc/dovecot/conf.d/{{ item }}.j2
+    dest: /etc/dovecot/conf.d/{{ item }}
+    backup: true
+    mode: 0644
+  loop:
+    - 10-auth.conf
+    - 10-director.conf
+    - 10-logging.conf
+    - 10-mail.conf
+    - 10-master.conf
+    - 10-ssl.conf
+    - 10-tcpwrapper.conf
+    - 15-lda.conf
+    - 15-mailboxes.conf
+    - 20-imap.conf
+    - 20-lmtp.conf
+    - 20-managesieve.conf
+    - 20-pop3.conf
+    - 20-submission.conf
+    - 90-acl.conf
+    - 90-plugin.conf
+    - 90-quota.conf
+    - 90-sieve-extprograms.conf
+    - 90-sieve.conf
+  notify:
+    - restart dovecot
+
+- name: create auth configurations
+  ansible.builtin.template:
+    src: etc/dovecot/auth.d/{{ item }}.j2
+    dest: /etc/dovecot/auth.d/{{ item }}
+    backup: true
+    mode: 0644
+  loop:
+    - auth-checkpassword.conf.ext
+    - auth-deny.conf.ext
+    - auth-dict.conf.ext
+    - auth-ldap.conf.ext
+    - auth-master.conf.ext
+    - auth-passwdfile.conf.ext
+    - auth-sql.conf.ext
+    - auth-static.conf.ext
+    - auth-system.conf.ext
+    - auth-vpopmail.conf.ext
+  notify:
+    - restart dovecot
+
+- name: create conf.ext configuration files
+  ansible.builtin.template:
+    src: etc/dovecot/{{ item }}.j2
+    dest: /etc/dovecot/{{ item }}
+    backup: true
+    mode: 0644
+  loop:
+    - dovecot-dict-auth.conf.ext
+    - dovecot-dict-sql.conf.ext
+    - dovecot-ldap.conf.ext
+    - dovecot-sql.conf.ext
+  notify:
+    - restart dovecot
+
+...

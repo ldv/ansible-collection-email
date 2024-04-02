@@ -1,0 +1,25 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+
+{% if dovecot_sieve.plugins is defined and
+      dovecot_sieve.plugins | count > 0 %}
+  {% if dovecot_sieve.plugins | bodsch.core.type == "list" %}
+    {% for plugin in dovecot_sieve.plugins %}
+plugin {
+      {% if plugin | bodsch.core.type == "dict" %}
+        {% for _, v in plugin.items() %}
+          {% if v | count > 0 %}
+            {% for key, value in v.items() %}
+              {% if value | bodsch.core.type == "bool" %}
+  {{ "%-27s" | format(key) }} = {{ value | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+              {% else %}
+  {{ "%-27s" | format(key) }} = {{ value }}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+}
+    {% endfor %}
+  {% endif %}
+{% endif %}
