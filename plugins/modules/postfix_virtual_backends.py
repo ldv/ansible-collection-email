@@ -26,7 +26,6 @@ query    =
   {{ item.query | indent(2, first=False, blank=False) }}
 """
 
-
 class PostfixVirtualBackends(object):
     """
     """
@@ -65,8 +64,8 @@ class PostfixVirtualBackends(object):
             """
             """
             return dict(
-                changed=False,
-                msg="The backend configuration has not been changed."
+                changed = False,
+                msg = "The backend configuration has not been changed."
             )
 
         for backend_type, backend_def in self.backends.items():
@@ -119,9 +118,9 @@ class PostfixVirtualBackends(object):
             )
 
         result = dict(
-            changed=_changed,
-            failed=_failed,
-            result=result_state
+            changed = _changed,
+            failed = _failed,
+            result = result_state
         )
 
         return result
@@ -208,11 +207,11 @@ def main():
     """
     """
     args = dict(
-        backends=dict(
+        backends = dict(
             required=True,
             type='dict'
         ),
-        dest=dict(
+        dest = dict(
             required=True,
             type='str'
         )

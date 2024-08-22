@@ -28,6 +28,9 @@ postfix_smtpd:
     - permit_sasl_authenticated
     - defer_unauth_destination
     - reject_unauth_destination
+  sender:
+    login_maps:
+      - proxy:mysql:/etc/postfix/virtual/mysql/login_maps.cf
 
 postfix_smtp:
   # use_tls: true
@@ -63,6 +66,14 @@ _database_defaults: &DATABASE_DEFAULTS
   hosts: database
   dbname: postfix
 
+postfix_virtual:
+  alias_maps:
+    - proxy:mysql:/etc/postfix/virtual/mysql/alias_maps.cf
+  mailbox_domains:
+    - proxy:mysql:/etc/postfix/virtual/mysql/domains_maps.cf
+  mailbox_maps:
+    - proxy:mysql:/etc/postfix/virtual/mysql/mailbox_maps.cf
+
 postfix_virtual_backends:
   mysql:
     - name: alias_maps.cf
@@ -77,23 +88,19 @@ postfix_virtual_backends:
         SELECT
           username AS allowedUser
         FROM mailbox
-        WHERE
-          username='%s' AND
-          active = 1
+        WHERE username='%s' AND active = 1
         UNION
           SELECT goto
           FROM alias
-          WHERE
-            address='%s' AND
-            active = 1;
+          WHERE address='%s' AND active = 1
 
     - name: domains_maps.cf
       <<: *DATABASE_DEFAULTS
       query: |
-       SELECT domain FROM domain WHERE domain='%s' AND active = 1;
+        SELECT domain FROM domain WHERE domain='%s' AND active = 1
 
     - name: mailbox_maps.cf
       <<: *DATABASE_DEFAULTS
       query: |
-        SELECT maildir FROM mailbox WHERE username='%s' AND active = 1;
+        SELECT maildir FROM mailbox WHERE username='%s' AND active = 1
 ...

@@ -441,7 +441,7 @@ smtpd_sasl_response_limit                 = {{ postfix_smtpd.sasl.response_limit
         postfix_smtpd.sasl.security_options | count > 0 %}
     {% set valid_security_options = [
         "noplaintext", "noactive", "nodictionary", "noanonymous", "forward_secrecy", "mutual_auth"] %}
-    {% set security_options = postfix_smtpd.sasl.security_options | valid_list_data(valid_security_options) %}
+    {% set security_options = postfix_smtpd.sasl.security_options | bodsch.email.valid_list_data(valid_security_options) %}
 smtpd_sasl_security_options               =
     {{ security_options | join("\n") | indent(4) }}
   {% endif %}

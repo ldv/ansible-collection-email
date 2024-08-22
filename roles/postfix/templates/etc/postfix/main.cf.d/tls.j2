@@ -19,7 +19,7 @@ tls_dane_digests                          = {{ postfix_tls.dane_digests | join("
         "NETSCAPE_CHALLENGE_BUG","NETSCAPE_REUSE_CIPHER_CHANGE_BUG","SSLEAY_080_CLIENT_DH_BUG",
         "SSLREF2_REUSE_CERT_TYPE_BUG","TLS_BLOCK_PADDING_BUG","TLS_D5_BUG","TLS_ROLLBACK_BUG",
         "TLSEXT_PADDING"] %}
-  {% set workarounds = postfix_tls.disable_workarounds | valid_list_data(valid_workarounds) %}
+  {% set workarounds = postfix_tls.disable_workarounds | bodsch.email.valid_list_data(valid_workarounds) %}
 tls_disable_workarounds                   =
     {{ workarounds | join("\n") | indent(4) }}
 {% endif %}
@@ -124,7 +124,7 @@ tls_session_ticket_cipher                 = {{ postfix_tls.session_ticket_cipher
   {% set valid_ssl_options = [
         "ENABLE_MIDDLEBOX_COMPAT","LEGACY_SERVER_CONNECT","NO_TICKET","NO_COMPRESSION",
         "NO_RENEGOTIATION","NO_SESSION_RESUMPTION_ON_RENEGOTIATION","PRIORITIZE_CHACHA"] %}
-  {% set ssl_options = postfix_tls.ssl_options | valid_list_data(valid_ssl_options) %}
+  {% set ssl_options = postfix_tls.ssl_options | bodsch.email.valid_list_data(valid_ssl_options) %}
 tls_ssl_options                           =
     {{ ssl_options | join("\n") | indent(4) }}
 {% endif %}

@@ -1,0 +1,11 @@
+---
+
+- name: snapd
+  src: bodsch.snapd
+  version: 1.2.1
+
+- name: mariadb
+  src: bodsch.mariadb
+  version: 2.3.1
+
+...
