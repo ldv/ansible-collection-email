@@ -1,0 +1,13 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+
+{% if dovecot_acl.plugins is defined and
+      dovecot_acl.plugins | count > 0 %}
+  {% if dovecot_acl.plugins | bodsch.core.type == "list" %}
+    {% for plugin in dovecot_acl.plugins %}
+plugin {
+  {{ plugin.keys() | first }} = {{ plugin.values() | first }}
+}
+    {% endfor %}
+  {% endif %}
+{% endif %}

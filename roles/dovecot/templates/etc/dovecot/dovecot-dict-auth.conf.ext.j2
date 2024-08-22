@@ -1,0 +1,77 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+
+{% if dovecot_dict_auth.uri is defined  and
+      dovecot_dict_auth.uri | string | length > 0 %}
+uri                           = {{ dovecot_dict_auth.uri }}
+{% endif %}
+{% if dovecot_dict_auth.default_pass_scheme is defined  and
+      dovecot_dict_auth.default_pass_scheme | string | length > 0 %}
+default_pass_scheme           = {{ dovecot_dict_auth.default_pass_scheme }}
+{% endif %}
+{% if dovecot_dict_auth.iterate_prefix is defined  and
+      dovecot_dict_auth.iterate_prefix | string | length > 0 %}
+iterate_prefix                = {{ dovecot_dict_auth.iterate_prefix }}
+{% endif %}
+{% if dovecot_dict_auth.iterate_disable is defined and
+      dovecot_dict_auth.iterate_disable | string | length > 0 %}
+iterate_disable               = {{ dovecot_dict_auth.iterate_disable | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+{% endif %}
+
+{% if dovecot_dict_auth.dict_keys is defined and
+      dovecot_dict_auth.dict_keys | count > 0 %}
+  {% if dovecot_dict_auth.dict_keys | bodsch.core.type == "list" %}
+    {% for key_type in dovecot_dict_auth.dict_keys %}
+key {{ key_type.keys() | first  }} {
+      {% for values in key_type.values() %}
+        {% for k, v in values.items() %}
+          {% if v | bodsch.core.type == "bool" %}
+  {{ "%-27s" | format(k) }} = {{ v | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+          {% else %}
+  {{ "%-27s" | format(k) }} = {{ v }}
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+}
+    {% endfor %}
+  {% endif %}
+{% endif %}
+
+{% if dovecot_dict_auth.passdb_objects is defined  and
+      dovecot_dict_auth.passdb_objects | count > 0 %}
+passdb_objects                = {{ dovecot_dict_auth.passdb_objects | join(' ') }}
+{% endif %}
+{% if dovecot_dict_auth.passdb_fields is defined and
+      dovecot_dict_auth.passdb_fields | count > 0 %}
+  {% if dovecot_dict_auth.passdb_fields | bodsch.core.type == "dict" %}
+passdb_fields {
+    {% for k,v  in dovecot_dict_auth.passdb_fields.items() %}
+      {% if v | bodsch.core.type == "bool" %}
+  {{ "%-27s" | format(k) }} = {{ v | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+      {% else %}
+  {{ "%-27s" | format(k) }} = {{ v }}
+      {% endif %}
+    {% endfor %}
+}
+  {% endif %}
+{% endif %}
+
+{% if dovecot_dict_auth.userdb_objects is defined  and
+      dovecot_dict_auth.userdb_objects | count > 0 %}
+userdb_objects                = {{ dovecot_dict_auth.userdb_objects | join(' ') }}
+{% endif %}
+
+{% if dovecot_dict_auth.userdb_fields is defined and
+      dovecot_dict_auth.userdb_fields | count > 0 %}
+  {% if dovecot_dict_auth.userdb_fields | bodsch.core.type == "dict" %}
+userdb_fields {
+    {% for k,v  in dovecot_dict_auth.userdb_fields.items() %}
+      {% if v | bodsch.core.type == "bool" %}
+  {{ "%-27s" | format(k) }} = {{ v | bodsch.core.config_bool(true_as='yes', false_as='no') }}
+      {% else %}
+  {{ "%-27s" | format(k) }} = {{ v }}
+      {% endif %}
+    {% endfor %}
+}
+  {% endif %}
+{% endif %}

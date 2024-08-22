@@ -1,0 +1,631 @@
+---
+
+dovecot_dependencies:
+  - iproute2
+
+dovecot_packages: []
+
+# ---------------------------------------------------------------------------------------
+
+dovecot_defaults_config:
+  listen:
+    - "*"
+    - "::"
+  base_dir: /run/dovecot/
+  instance_name: "{{ ansible_fqdn }}"
+  login_greeting: "Dovecot ready."
+  login_trusted_networks: []
+  login_access_sockets: []
+  auth_proxy_self: ""
+  verbose_proctitle: ""                             # true
+  shutdown_clients: ""                              # false
+  doveadm_worker_count: ""                          # 0
+  doveadm_socket_path: doveadm-server
+  import_environment: []
+  # - TZ
+  ##
+  ##
+  # dict {
+  #   #quota = mysql:/etc/dovecot/dovecot-dict-sql.conf.ext
+  #   #expire = sqlite:/etc/dovecot/dovecot-dict-sql.conf.ext
+  # }
+  dictionaries: {}
+  #   quota: mysql:/etc/dovecot/dovecot-dict-sql.conf.ex
+  #   expire: sqlite:/etc/dovecot/dovecot-dict-sql.conf.ext
+
+dovecot_defaults_auth:
+  anonymous_username: ""                            # default: anonymous
+  cache_negative_ttl: ""                            # default: 1 hour
+  cache_size: ""                                    # default: 0
+  cache_ttl: ""                                     # default: 1 hour
+  cache_verify_password_with_worker: ""             # default: false
+  debug: ""                                         # default: false
+  debug_passwords: ""                               # default: false
+  default_realm: ""                                 # default: ""
+  failure_delay: ""                                 # default: 2 secs
+  gssapi_hostname: ""                               # default: ""
+  krb5_keytab: ""                                   # default: ""
+  master_user_separator: ""                         # default: ""
+  mechanisms: []                                    # default: plain
+  policy_check_after_auth: ""                       # default: true
+  policy_check_before_auth: ""                      # default: true
+  policy_hash_mech: ""                              # default: sha256
+  policy_hash_nonce: ""                             # default: ""
+  policy_hash_truncate: ""                          # default: 12
+  policy_log_only: ""                               # default: false
+  policy_reject_on_fail: ""                         # default: false
+  policy_report_after_auth: ""                      # default: true
+  policy_request_attributes: ""                     # default: login=%{requested_username} pwhash=%{hashed_password} remote=%{rip} device_id=%{client_id} protocol=%s
+  policy_server_api_header: ""                      # default: ""
+  policy_server_timeout_msecs: ""                   # default: 2000
+  policy_server_url: ""                             # default: ""
+  proxy_self: ""                                    # default: ""
+  realms: []                                        # default: ""
+  socket_path: ""                                   # default: auth-userdb
+  ssl_require_client_cert: ""                       # default: false
+  ssl_username_from_cert: ""                        # default: false
+  stats:                                            # default: false
+  use_winbind: ""                                   # default: false
+  username_chars: ""                                # default: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890.-_@
+  username_format: ""                               # default: %Lu
+  username_translation: ""                          # default: ""
+  verbose: ""                                       # default: false
+  verbose_passwords: ""                             # default: false
+  winbind_helper_path: ""                           # default: ""
+  worker_max_count: 80                              # default: 30
+  disable_plaintext_auth: ""                        # default: true
+  includes:
+    - "# auth-deny.conf.ext"
+    - "# auth-master.conf.ext"
+    - auth-system.conf.ext
+    - "# auth-sql.conf.ext"
+    - "# auth-ldap.conf.ext"
+    - "# auth-passwdfile.conf.ext"
+    - "# auth-checkpassword.conf.ext"
+    - "# auth-vpopmail.conf.ext"
+    - "# auth-static.conf.ext"
+
+dovecot_defaults_director:
+  director_servers: ""
+  director_mail_servers: ""
+  director_user_expire: "15 min"
+  director_username_hash: "%Lu"
+  director_services:
+    - director:
+        - listener: unix
+          type: login/director
+        - listener: fifo
+          type: login/proxy-notify
+        - listener: unix
+          type: director-userdb
+    - logins:
+        - imap: {}
+        - pop3: {}
+        - submission: {}
+    - protocols:
+        - lmtp: {}
+
+dovecot_defaults_logging:
+  auth_debug: ""                                                  # true
+  auth_debug_passwords: false
+  auth_verbose: false
+  auth_verbose_passwords: false
+  debug_log_path: /var/log/dovecot/debug.log
+  deliver_log_format: "msgid=%m [from=%f subject=%s]: %$"
+  info_log_path: /var/log/dovecot/dovecot.log
+  log_core_filter: ""
+  log_debug: []
+  log_path: ""
+  log_timestamp: "%Y-%m-%d %H:%M:%S | "
+  login_log_format: "%$: %s"
+  login_log_format_elements:
+    - "user=[%u]"
+    - "method=%m"
+    - "rip=%r"
+    - "lip=%l"
+    - "mpid=%e"
+    - "%c"
+  mail_debug: false
+  mail_log_prefix: "%Us(%u): "
+  syslog_facility: ""  # mail
+  verbose_ssl: false
+  plugins:
+    mail_log_events:
+      - delete
+      - undelete
+      - expunge
+      - copy
+      - mailbox_delete
+      - mailbox_rename
+      - flag_change
+      - append
+    mail_log_fields:
+      - uid
+      - box
+      - msgid
+      - size
+      - from
+      - subject
+      - vsize
+      - flags
+
+dovecot_defaults_mail:
+  namespaces:
+    - name: inbox
+      inbox: true
+
+  valid_chroot_dirs: []
+
+  mail_protocols:
+    - name: "!indexer-worker"
+      mail_plugins:
+        - "$mail_plugins"
+
+  mail_attachment_fs: "sis posix"                   # ['posix', 'sis posix', 'sis-queue posix']
+
+  mail_location: ""
+
+dovecot_defaults_master:
+  default_process_limit: 100
+  default_client_limit: 1000
+  default_vsz_limit: 256M
+  default_login_user: dovenull
+  default_internal_user: dovecot
+
+  services:
+    - log:
+        chroot: ""
+        client_limit: 0
+        drop_priv_before_exec: false
+        executable: log
+        extra_groups:
+        user:
+        group:
+        idle_kill: "4294967295 secs"
+        privileged_group:
+        process_limit: 1
+        process_min_avail: 0
+        protocol:
+        service_count: 0
+        type: log
+        vsz_limit:
+        listeners:
+          - log-errors:
+              type: unix
+              group:
+              user:
+              mode: "0600"
+
+    - imap-login:
+        service_count: 1
+        process_min_avail: 0
+        listeners:
+          - imap:
+              type: inet
+              port: 143
+          - imaps:
+              type: inet
+              port: 993
+              ssl: true
+
+    - pop3-login:
+        listeners:
+          - pop3:
+              port: 110
+          - pop3s:
+              port: 995
+              ssl: true
+
+    - submission-login:
+        listeners:
+          - submission:
+              port: 587
+
+    - lmtp:
+        listeners:
+          - lmtp:
+              type: unix
+              mode: "0666"
+
+    - imap: {}
+    - pop3: {}
+    - submission: {}
+
+    - auth-worker:
+        user: root
+
+    - dict:
+        listeners:
+          - dict:
+              type: unix
+              mode: "0600"
+
+dovecot_defaults_ssl:
+  enabled: ""                                       # false
+  cert: ""                                          #
+  key: ""                                           #
+  key_password: ""                                  #
+  ca: ""                                            #
+  require_crl: ""                                   # false
+  client_ca_dir: ""                                 #
+  client_ca_file: ""                                #
+  verify_client_cert: ""                            # false
+  cert_username_field: ""  # commonName             #
+  min_protocol: ""                                  # TLSv1.2 | ['ANY','SSLv3','TLSv1','TLSv1.1','TLSv1.2','TLSv1.3','LATEST']
+  # https://doc.dovecot.org/settings/core/#core_setting-ssl_cipher_list
+  cipher_list:                                      #
+    - ALL                                           #
+    - "!DH"                                         #
+    - "!kRSA"                                       #
+    - "!SRP"                                        #
+    - "!kDHd"                                       #
+    - "!DSS"                                        #
+    - "!aNULL"                                      #
+    - "!eNULL"                                      #
+    - "!EXPORT"                                     #
+    - "!DES"                                        #
+    - "!3DES"                                       #
+    - "!MD5"                                        #
+    - "!PSK"                                        #
+    - "!RC4"                                        #
+    - "!ADH"                                        #
+    - "!LOW@STRENGTH"                               #
+  cipher_suites: []                                 #
+  curve_list:                                       #
+    - P-521                                         #
+    - P-384                                         #
+    - P-256                                         #
+  ssl_prefer_server_ciphers: ""                     # false
+  ## for valid values run "openssl engine"          #
+  ssl_crypto_device: ""                             #
+  ssl_options:                                      # no-compression | [compression, no_compression, no_ticket]
+    - no_compression                                #
+  dh: ""                                            #
+  dh_parameters_length: 2048                        #
+
+dovecot_defaults_tcpwrapper:
+  login_access_sockets: ""                          # tcpwrap
+  services: []                                      #
+    # - login/tcpwrap:
+    #     listeners:
+    #       - login/tcpwrap:
+    #           type: "unix"
+    #           mode: "0666"
+    #           user: ""
+    #           group: ""
+
+dovecot_defaults_lda:
+  postmaster_address: ""                            #
+  hostname: ""                                      #
+  quota_full_tempfail: ""                           # false
+  sendmail_path: ""                                 # /usr/sbin/sendmail
+  submission_host: ""                               #
+  rejection_subject: ""                             # Rejected: %s
+  rejection_reason: ""                              # "Your message to <%t> was automatically rejected:%n%r"
+  recipient_delimiter: ""                           # "+"
+  original_recipient_header: ""                     #
+  mailbox_autocreate: ""                            # false
+  mailbox_autosubscribe: ""                         # false
+  protocols: []                                     #
+    # - lda:
+    #     mail_plugins:
+    #       - "$mail_plugins"
+
+dovecot_defaults_mailboxes:
+  namespaces: []
+    # - inbox:
+    #     disabled: false
+    #     hidden: false
+    #     ignore_on_failure: false
+    #     inbox: true
+    #     list: true
+    #     location: ""
+    #     order: 0
+    #     prefix: ""
+    #     separator: ""
+    #     subscriptions: true
+    #     type: private
+    #     Archive:
+    #       special_use: \Archive
+    #     Drafts:
+    #       # false     - Never created automatically.
+    #       # create    - Automatically created, but no automatic subscription.
+    #       # subscribe - Automatically created and subscribed.
+    #       auto: subscribe
+    #       autoexpunge: 0
+    #       autoexpunge_max_mails: 0
+    #       comment: ""
+    #       driver: ""
+    #       special_use: \Drafts
+    #     Junk:
+    #       special_use: \Junk
+    #     Sent:
+    #       special_use: \Sent
+    #     "Sent Messages":
+    #       special_use: \Sent
+    #     Trash:
+    #       special_use: \Trash
+    #     virtual/All:
+    #       comment: "All my messages"
+    #       special_use: \All
+    #     virtual/Flagged:
+    #       comment: "All my flagged messages"
+    #       special_use: \Flagged
+
+dovecot_defaults_imap:
+  hibernate_timeout: ""                             # 0
+  max_line_length: ""                               # 64k
+  logout_format: []                                 # []
+  capability: ""                                    #
+  idle_notify_interval: ""                          # 2 mins
+  id_send: ""                                       #
+  id_log: ""                                        #
+  client_workarounds: []                            # ['delay-newmail','tb-extra-mailbox-sep','tb-lsub-flags']
+  urlauth_host: ""                                  #
+  literal_minus: ""                                 # false
+  fetch_failure: ""                                 # disconnect-immediately
+  protocols:                                        #
+    - imap: {}
+    #     mail_plugins: $mail_plugins
+    #     mail_max_userip_connections: 10
+
+dovecot_defaults_lmtp:
+  proxy: ""                                         # false
+  save_to_detail_mailbox: ""                        # false
+  rcpt_check_quota: ""                              # false
+  hdr_delivery_address: ""                          # final | final, original, none
+  protocols: []
+    # - lmtp:
+    #     mail_plugins: $mail_plugins
+
+dovecot_defaults_managesieve:
+  enabled_protocols:                                #
+    - "$protocols"
+    - sieve
+  services:                                         #
+    - managesieve-login:
+        chroot: login
+        client_limit: 0
+        drop_priv_before_exec: no
+        executable: managesieve-login
+        extra_groups: ""
+        group: ""
+        idle_kill: 0
+        listeners:
+          - sieve:
+              type: inet
+              port: 4190
+              address: ""
+              haproxy: false
+              reuse_port: false
+              ssl: false
+          # - sieve_deprecated: {}
+          #    type: inet
+          #    port: 2000
+    - managesieve:
+        process_limit: 1024
+
+  protocols:
+    - sieve: {}                                     #
+
+    #   managesieve_max_line_length: 65536
+    #   mail_max_userip_connections: 10
+    #   mail_plugins: []
+    ##
+    ## MANAGESIEVE logout format string:
+    ##  %i - total number of bytes read from client
+    ##  %o - total number of bytes sent to client
+    ##  %{put_bytes} - Number of bytes saved using PUTSCRIPT command
+    ##  %{put_count} - Number of scripts saved using PUTSCRIPT command
+    ##  %{get_bytes} - Number of bytes read using GETCRIPT command
+    ##  %{get_count} - Number of scripts read using GETSCRIPT command
+    ##  %{get_bytes} - Number of bytes processed using CHECKSCRIPT command
+    ##  %{get_count} - Number of scripts checked using CHECKSCRIPT command
+    ##  %{deleted_count} - Number of scripts deleted using DELETESCRIPT command
+    ##  %{renamed_count} - Number of scripts renamed using RENAMESCRIPT command
+    #   managesieve_logout_format:
+    #     - "bytes: %i/%o"
+    #     - "deleted: %{deleted_count}"
+    #     - "renamed: %{renamed_count}"
+    #   managesieve_implementation_string: Dovecot Pigeonhole
+    #   managesieve_sieve_capability: ""
+    #   managesieve_notify_capability: ""
+    #   managesieve_max_compile_errors: 5
+
+dovecot_defaults_pop3:
+  no_flag_updates: ""                               # false
+  enable_last: ""                                   # false
+  reuse_xuidl: ""                                   # false
+  lock_session: ""                                  # false
+  fast_size_lookups: ""                             # false
+  uidl_format: "%08Xu%08Xv"
+  save_uidl: ""                                     # false
+  uidl_duplicates: ""                               # allow
+  deleted_flag: ""
+  logout_format: ""                                 # "top=%t/%p, retr=%r/%b, del=%d/%m, size=%s"
+  client_workarounds: []
+  protocols:
+    - pop3: {}
+
+dovecot_defaults_submission:
+  hostname: ""                                      #
+  logout_format: "in=%i out=%o"                     #
+  max_mail_size: ""                                 #
+  max_recipients: ""                                #
+  client_workarounds: []                            #
+  relay_host: ""                                    #
+  relay_port: ""                                    #
+  relay_trusted: ""                                 # false
+  relay_user: ""                                    #
+  relay_master_user: ""                             #
+  relay_password: ""                                #
+  relay_ssl: ""                                     # false
+  relay_ssl_verify: ""                              # true
+  relay_rawlog_dir: ""                              #
+  protocols:                                        #
+    - submission: {}                                #
+
+dovecot_defaults_acl:
+  plugins: []
+  services: []
+
+dovecot_defaults_plugin:
+  plugins: []
+  services: []
+
+dovecot_defaults_quota:
+  plugins: []
+  services: []
+
+dovecot_defaults_sieve_extprograms:
+  plugins: []
+  services: []
+
+dovecot_defaults_sieve:
+  plugins: []
+
+dovecot_defaults_authentications:
+  - checkpassword:
+      passdb:
+        driver: checkpassword
+        args: /usr/bin/checkpassword
+      userdb:
+        driver: prefetch
+  - deny:
+      passdb:
+        driver: passwd-file
+        deny: true
+        args: /etc/dovecot/deny-users
+  - dict:
+      passdb:
+        driver: dict
+        args: /etc/dovecot/dovecot-dict-auth.conf.ext
+      userdb:
+        driver: dict
+        args: /etc/dovecot/dovecot-dict-auth.conf.ext
+
+# https://doc.dovecot.org/configuration_manual/authentication/dict/?highlight=default_pass_scheme
+dovecot_defaults_dict_auth:
+  # uri: ""
+  default_pass_scheme: MD5
+  iterate_prefix: userdb/
+  # iterate_disable: false
+  dict_keys:
+    - passwd:
+        key: passdb/%u
+        format: json
+    - userdb:
+        key: userdb/%u
+        format: json
+    - quota:
+        key: userdb/%u/quota
+        default_value: 100M
+
+  passdb_objects:
+    - passdb
+  passdb_fields: {}
+  userdb_objects:
+    - userdb
+  userdb_fields:
+    quota_rule: "*:storage=%{dict:quota}"
+    mail: "maildir:%{dict:userdb.home}/Maildir"
+
+dovecot_defaults_dict_sql:
+  connects:
+    host: ""                                        # localhost
+    port: ""                                        #
+    dbname: ""                                      # mails
+    user: ""                                        # testuser
+    password: ""                                    # pass
+  maps: []
+    # - pattern: priv/quota/storage
+    #   table: quota
+    #   username_field: username
+    #   value_field: bytes
+    # - pattern: priv/quota/messages
+    #   table: quota
+    #   username_field: username
+    #   value_field: messages
+    # - pattern: "shared/expire/$user/$mailbox"
+    #   table: expires
+    #   value_field: expire_stamp
+    #   fields:
+    #     username: $user
+    #     mailbox: $mailbox
+
+dovecot_defaults_ldap:
+  hosts: []
+  uris: []
+  dn: ""
+  dnpass: ""
+  sasl_bind: ""                                     # false
+  sasl_mech: ""
+  sasl_realm: ""
+  sasl_authz_id: ""
+  tls: ""                                           # false
+  tls_ca_cert_file: ""
+  tls_ca_cert_dir: ""
+  tls_cipher_suite: ""
+  tls_cert_file: ""
+  tls_key_file: ""
+  ##  Valid values: never, hard, demand, allow, try
+  tls_require_cert: ""
+  ldaprc_path: ""
+  debug_level: ""                                   # 0
+  auth_bind: ""                                     # false
+  auth_bind_userdn: ""
+  ldap_version: ""                                  # 3
+  base: ""
+  ##  Dereference: never, searching, finding, always
+  deref: ""                                         # never
+  ##  Search scope: base, onelevel, subtree
+  scope: ""                                         # subtree
+  ##  User attributes are given in LDAP-name=dovecot-internal-name list. The
+  ##  internal names are:
+  ##    uid - System UID
+  ##    gid - System GID
+  ##    home - Home directory
+  ##    mail - Mail location
+  ##
+  ##  There are also other special fields which can be returned, see
+  ##  http://wiki2.dovecot.org/UserDatabase/ExtraFields
+  user_attrs: []
+    # - homeDirectory=home
+    # - uidNumber=uid
+    # - gidNumber=gid
+  ##  http://wiki2.dovecot.org/Variables for full list):
+  ##    %u - username
+  ##    %n - user part in user@domain, same as %u if there's no domain
+  ##    %d - domain part in user@domain, empty if user there's no domain
+  user_filter: ""                                   # "(&(objectClass=posixAccount)(uid=%u))"
+  pass_attrs: []
+    # - uid=user
+    # - userPassword=password
+    # - homeDirectory=userdb_home
+    # - uidNumber=userdb_uid
+    # - gidNumber=userdb_gid
+  pass_filter: ""                                   # "(&(objectClass=posixAccount)(uid=%u))"
+  iterate_attrs: ""                                 # uid=user
+  iterate_filter: ""                                # "(objectClass=posixAccount)"
+  ##  List of supported schemes is in: http://wiki2.dovecot.org/Authentication
+  default_pass_scheme: ""                           # CRYPT
+  blocking: ""                                      # false
+
+dovecot_defaults_sql: {}
+##  Database driver: mysql, pgsql, sqlite
+# driver: ""
+#
+##  connect = host=192.168.1.1 dbname=users
+##  connect = host=sql.example.com dbname=virtual user=virtual password=blarg
+##  connect = /etc/dovecot/authdb.sqlite
+# connect: ""
+# default_pass_scheme: MD5
+# password_query: >
+#   SELECT username, domain, password
+#   FROM users WHERE username: '%n' AND domain: '%d'
+# user_query: >
+#   SELECT home, uid, gid
+#   FROM users WHERE username: '%n' AND domain: '%d'
+# iterate_query: SELECT username AS user FROM users
+
+## grep -v "# " templates/etc/dovecot/conf.d/10-ssl.conf.j2 | sed -e '/^;/ d'  -e '/^ *$/ d'

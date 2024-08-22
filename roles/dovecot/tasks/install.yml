@@ -1,0 +1,11 @@
+---
+
+- name: install package
+  ansible.builtin.package:
+    name: "{{ dovecot_packages }}"
+    state: present
+  tags:
+    - dovecot
+    - dovecot_install
+
+...

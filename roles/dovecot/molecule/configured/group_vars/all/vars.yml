@@ -1,0 +1,600 @@
+---
+
+dovecot_config:
+  listen:
+    - "127.0.0.1"
+
+dovecot_logging:
+  auth_debug: true
+  auth_debug_passwords: true
+  auth_verbose: true
+  # false, plain, sha1
+  auth_verbose_passwords: plain
+  debug_log_path: /var/log/dovecot/debug.log
+  mail_debug: true
+
+dovecot_auth:
+  disable_plaintext_auth: false
+  mechanisms:
+    - plain
+  includes:
+    - auth-system.conf.ext
+
+dovecot_mail:
+  namespaces:
+    - type: private
+      name: inbox
+      separator: "."
+      prefix: INBOX.
+      inbox: true
+      list: true
+      subscriptions: true
+      location: "maildir:%h:INDEX=/srv/mail/INDEX/%d/%n:CONTROL=/srv/mail/CONTROL/%d/%n:LAYOUT=maildir++"
+
+    - type: public
+      separator: "."
+      prefix: shared.
+      location: "maildir:/srv/mail/PUBLIC:INDEX=/srv/mail/PUBLIC/indexes:CONTROL=/srv/mail/PUBLIC/control:LAYOUT=maildir++"
+      list: children
+      subscriptions: true
+
+  mail_uid: 1101
+  mail_gid: 1101
+  first_valid_uid: 1101
+  last_valid_uid: 1101
+  first_valid_gid: 1101
+  last_valid_gid: 1101
+
+  mail_attachment_fs: "sis-queue posix"
+
+  mail_attachment_hash: "%{sha1:120}"
+
+  mail_protocols:
+    - name: "!indexer-worker"
+      mail_vsize_bg_after_count: 10
+
+dovecot_master:
+  services:
+    - auth:
+        listeners:
+          - auth-userdb:
+              type: unix
+              mode: "0660"
+              user: vmail
+              group: vmail
+          # - "/var/spool/postfix/private/auth":
+          #     type: unix
+          #     mode: "0660"
+          #     user: vmail
+          #     group: vmail
+
+dovecot_tcpwrapper:
+  login_access_sockets: tcpwrap
+  services:
+    - login/tcpwrap:
+        listeners:
+          - login/tcpwrap:
+              type: "unix"
+              mode: "0666"
+              user: ""
+              group: ""
+
+dovecot_lda:
+  postmaster_address: ""
+  hostname: ""
+  quota_full_tempfail: false
+  sendmail_path: /usr/sbin/sendmail
+  submission_host: ""
+  rejection_subject: "Rejected: %s"
+  rejection_reason: "Your message to <%t> was automatically rejected:%n%r"
+  recipient_delimiter: "+"
+  original_recipient_header: ""
+  mailbox_autocreate: false
+  mailbox_autosubscribe: false
+  protocols:
+    - lda:
+        mail_plugins:
+          - "$mail_plugins"
+
+dovecot_mailboxes:
+  namespaces:
+    - inbox:
+        disabled: false
+        hidden: false
+        ignore_on_failure: false
+        inbox: true
+        list: true
+        location: ""
+        order: 0
+        prefix: ""
+        separator: ""
+        subscriptions: true
+        type: private
+        Archive:
+          special_use: \Archive
+        Drafts:
+          # false     - Never created automatically.
+          # create    - Automatically created, but no automatic subscription.
+          # subscribe - Automatically created and subscribed.
+          auto: subscribe
+          autoexpunge: 0
+          autoexpunge_max_mails: 0
+          comment: ""
+          driver: ""
+          special_use: \Drafts
+        Junk:
+          special_use: \Junk
+        Sent:
+          special_use: \Sent
+        "Sent Messages":
+          special_use: \Sent
+        Trash:
+          special_use: \Trash
+        virtual/All:
+          comment: "All my messages"
+          special_use: \All
+        virtual/Flagged:
+          comment: "All my flagged messages"
+          special_use: \Flagged
+
+dovecot_imap:
+  # hibernate_timeout: 0
+  # max_line_length: 64k
+  ##
+  ##   %i - total number of bytes read from client
+  ##   %o - total number of bytes sent to client
+  ##   %{fetch_hdr_count} - Number of mails with mail header data sent to client
+  ##   %{fetch_hdr_bytes} - Number of bytes with mail header data sent to client
+  ##   %{fetch_body_count} - Number of mails with mail body data sent to client
+  ##   %{fetch_body_bytes} - Number of bytes with mail body data sent to client
+  ##   %{deleted} - Number of mails where client added \Deleted flag
+  ##   %{expunged} - Number of mails that client expunged, which does not
+  ##                 include automatically expunged mails
+  ##   %{autoexpunged} - Number of mails that were automatically expunged after
+  ##                     client disconnected
+  ##   %{trashed} - Number of mails that client copied/moved to the
+  ##                special_use=\Trash mailbox.
+  ##   %{appended} - Number of mails saved during the session
+  logout_format:
+    - "in=%i"
+    - "out=%o"
+    - "deleted=%{deleted}"
+    - "expunged=%{expunged}"
+    - "trashed=%{trashed}"
+    - "hdr_count=%{fetch_hdr_count}"
+    - "hdr_bytes=%{fetch_hdr_bytes}"
+    - "body_count=%{fetch_body_count}"
+    - "body_bytes=%{fetch_body_bytes}"
+  capability: "+XFOO XBAR"
+  # idle_notify_interval: 2 mins
+  # id_send: ""
+  # id_log: ""
+  client_workarounds:
+    - delay-newmail
+  #   - tb-extra-mailbox-sep
+  #   - tb-lsub-flags
+  # urlauth_host: ""
+  # literal_minus: false
+  fetch_failure: disconnect-immediately
+  protocols:
+    - imap:
+        mail_plugins: $mail_plugins
+        mail_max_userip_connections: 10
+
+dovecot_lmtp:
+  proxy: false
+  save_to_detail_mailbox: false
+  rcpt_check_quota: false
+  hdr_delivery_address: final
+  protocols:
+    - lmtp:
+        mail_plugins: $mail_plugins
+
+# TODO
+dovecot_managesieve:
+
+  enabled_protocols:
+    - "$protocols"
+    - sieve
+  services:
+    - managesieve-login:
+        # chroot: login
+        # client_limit: 0
+        # drop_priv_before_exec: no
+        # executable: managesieve-login
+        # extra_groups: ""
+        # group: ""
+        # idle_kill: 0
+        service_count: 1
+        vsz_limit: 64M
+        process_min_avail: 1
+        listeners:
+          - sieve:
+              type: inet
+              port: 4190
+              address: ""
+              haproxy: false
+              reuse_port: false
+              ssl: false
+          # - sieve_deprecated:
+          #     type: inet
+          #     port: 2000
+    - managesieve:
+        process_limit: 1024
+
+  protocols:
+    - sieve:
+        managesieve_max_line_length: 65536
+        mail_max_userip_connections: 10
+        mail_plugins: []
+        ##
+        ## MANAGESIEVE logout format string:
+        ##  %i - total number of bytes read from client
+        ##  %o - total number of bytes sent to client
+        ##  %{put_bytes} - Number of bytes saved using PUTSCRIPT command
+        ##  %{put_count} - Number of scripts saved using PUTSCRIPT command
+        ##  %{get_bytes} - Number of bytes read using GETCRIPT command
+        ##  %{get_count} - Number of scripts read using GETSCRIPT command
+        ##  %{get_bytes} - Number of bytes processed using CHECKSCRIPT command
+        ##  %{get_count} - Number of scripts checked using CHECKSCRIPT command
+        ##  %{deleted_count} - Number of scripts deleted using DELETESCRIPT command
+        ##  %{renamed_count} - Number of scripts renamed using RENAMESCRIPT command
+        managesieve_logout_format:
+          - "bytes (in=%i / out=%o)"
+          - "deleted: %{deleted_count}"
+          - "renamed: %{renamed_count}"
+        managesieve_implementation_string: "Dovecot Pigeonhole"
+        managesieve_sieve_capability: ""
+        managesieve_notify_capability: ""
+        managesieve_max_compile_errors: 5
+
+  plugins:
+    # The location of the user's main script storage. The active script
+    # in this storage is used as the main user script executed during
+    # delivery. The include extension fetches the :personal scripts
+    # from this location. When ManageSieve is used, this is also where
+    # scripts are uploaded. This example uses the file system as
+    # storage, with all the user's scripts located in the directory
+    # `~/sieve' and the active script (symbolic link) located at
+    # `~/.dovecot.sieve'.
+    - sieve:
+      - /var/sieve-scripts/%u.sieve
+      - file:~/sieve
+      - active=~/.dovecot.sieve
+    # If the user has no personal active script (i.e. if the location
+    # indicated in sieve= does not exist or has no active script), use
+    # this one:
+    - sieve_default: /var/lib/dovecot/sieve/default.sieve
+    - sieve_default_name: roundcube
+    # The include extension fetches the :global scripts from this
+    # location.
+    - sieve_global: /var/lib/dovecot/sieve/global/
+    #
+    - sieve_before: /var/lib/dovecot/sieve/discard-viruses.sieve
+    # Domain-level scripts retrieved from LDAP
+    - sieve_before2: ldap:/etc/dovecot/sieve-ldap.conf;name=ldap-domain
+    # User-specific scripts executed before the user's personal script.
+    #   E.g. a vacation script managed through a non-ManageSieve GUI.
+    - sieve_before3: /var/vmail/%d/%n/sieve-before
+    # User-specific scripts executed after the user's personal script.
+    # (if keep is still in effect)
+    #   E.g. user-specific default mail filing rules
+    - sieve_after: /var/vmail/%d/%n/sieve-after
+    # Global scripts executed after the user's personal script
+    # (if keep is still in effect)
+    #   E.g. default mail filing rules.
+    - sieve_after2: /var/lib/dovecot/sieve/after.d/
+
+dovecot_pop3:
+  no_flag_updates: false
+  enable_last: false
+  reuse_xuidl: false
+  lock_session: false
+  fast_size_lookups: false
+  #  %v - Mailbox's IMAP UIDVALIDITY
+  #  %u - Mail's IMAP UID
+  #  %m - MD5 sum of the mailbox headers in hex (mbox only)
+  #  %f - filename (maildir only)
+  #  %g - Mail's GUID
+  #  UW's ipop3d         : %08Xv%08Xu
+  #  Courier             : %f or %v-%u (both might be used simultaneously)
+  #  Cyrus (<= 2.1.3)    : %u
+  #  Cyrus (>= 2.1.4)    : %v.%u
+  #  Dovecot v0.99.x     : %v.%u
+  #  tpop3d              : %Mf
+  uidl_format: "%08Xu%08Xv"
+  save_uidl: false
+  #
+  #   allow: Show duplicates to clients.
+  #   rename: Append a temporary -2, -3, etc. counter after the UIDL.
+  uidl_duplicates: allow
+  deleted_flag: ""
+  #
+  #  %i - total number of bytes read from client
+  #  %o - total number of bytes sent to client
+  #  %t - number of TOP commands
+  #  %p - number of bytes sent to client as a result of TOP command
+  #  %r - number of RETR commands
+  #  %b - number of bytes sent to client as a result of RETR command
+  #  %d - number of deleted messages
+  #  %{deleted_bytes} - number of bytes in deleted messages
+  #  %m - number of messages (before deletion)
+  #  %s - mailbox size in bytes (before deletion)
+  #  %u - old/new UIDL hash. may help finding out if UIDLs changed unexpectedly
+  logout_format: "{top: {commands: %t, bytes: %p}, retr: {commands: %r, bytes: %b}, deletes: {count: %d, count_before: %m, size_before: %s}}"
+  #
+  #   outlook-no-nuls:
+  #     Outlook and Outlook Express hang if mails contain NUL characters.
+  #     This setting replaces them with 0x80 character.
+  #   oe-ns-eoh:
+  #     Outlook Express and Netscape Mail breaks if end of headers-line is
+  #     missing. This option simply sends it if it's missing.
+  # The list is space-separated.
+  client_workarounds: []
+  protocols:
+    - pop3:
+        mail_plugins: "$mail_plugins"
+        mail_max_userip_connections: 10
+
+dovecot_submission:
+  hostname: ""
+  logout_format: "{in: %i, out: %o, commands: %{command_count} }"
+  max_mail_size: ""
+  max_recipients: ""
+  client_workarounds: []
+  relay_host: ""
+  relay_port: ""
+  relay_trusted: false
+  relay_user: ""
+  relay_master_user: ""
+  relay_password: ""
+  relay_ssl: false
+  relay_ssl_verify: true
+  relay_rawlog_dir: ""
+  protocols:
+    - submission:
+        mail_plugins: $mail_plugins
+        mail_max_userip_connections: 10
+
+dovecot_acl:
+  plugins:
+    - acl: vfile:/etc/dovecot/global-acls:cache_secs=300
+    - acl_shared_dict: file:/var/lib/dovecot/shared-mailboxes
+
+dovecot_plugin:
+  plugins:
+    # - autocreate: INBOX.Sent
+    # - autocreate2: INBOX.Trash
+    # - autocreate3: INBOX.Drafts
+    # - autocreate4: INBOX.Junk
+    # - autocreate5: INBOX.Archive
+    - autosubscribe: INBOX.Sent
+    - autosubscribe2: INBOX.Trash
+    - autosubscribe3: INBOX.Drafts
+    - autosubscribe4: INBOX.Junk
+    - autosubscribe5: INBOX.Archive
+    - mail_log_events: "delete undelete expunge copy mailbox_delete mailbox_rename"
+    - mail_log_fields: "uid box msgid size from subject"
+
+dovecot_quota:
+  plugins:
+    # Quota limits are set using "quota_rule" parameters. To get per-user quota
+    # limits, you can set/override them by returning "quota_rule" extra field
+    # from userdb. It's also possible to give mailbox-specific limits, for example
+    # to give additional 100 MB when saving to Trash:
+    - limits:
+        quota_rule: "*:storage=1G"
+        quota_rule2: "Trash:storage=+100M"
+        # LDA/LMTP allows saving the last mail to bring user from under quota to
+        # over quota, if the quota doesn't grow too high. Default is to allow as
+        # long as quota will stay under 10% above the limit. Also allowed e.g. 10M.
+        quota_grace: 10%%
+        # Quota plugin can also limit the maximum accepted mail size.
+        quota_max_mail_size: 100M
+    # You can execute a given command when user exceeds a specified quota limit.
+    # Each quota root has separate limits. Only the command for the first
+    # exceeded limit is executed, so put the highest limit first.
+    # The commands are executed via script service by connecting to the named
+    # UNIX socket (quota-warning below).
+    # Note that % needs to be escaped as %%, otherwise "% " expands to empty.
+    - warnings:
+        quota_warning: storage=95%% quota-warning 95 %u
+        quota_warning2: storage=80%% quota-warning 80 %u
+    # Multiple backends are supported:
+    #   dirsize: Find and sum all the files found from mail directory.
+    #            Extremely SLOW with Maildir. It'll eat your CPU and disk I/O.
+    #   dict: Keep quota stored in dictionary (eg. SQL)
+    #   maildir: Maildir++ quota
+    #   fs: Read-only support for filesystem quota
+    - backends:
+        # quota: dirsize:User quota
+        # quota: maildir:User quota
+        # quota: dict:User quota::proxy::quota
+        quota: fs:User quota
+    # Multiple quota roots are also possible, for example this gives each user
+    # their own 100MB quota and one shared 1GB quota within the domain:
+    - backends_extended2:
+        quota: dict:user::proxy::quota
+        quota2: dict:domain:%d:proxy::quota_domain
+        quota_rule: "*:storage=102400"
+        quota2_rule: "*:storage=1048576"
+
+  # Example quota-warning service. The unix listener's permissions should be
+  # set in a way that mail processes can connect to it. Below example assumes
+  # that mail processes run as vmail user. If you use mode=0666, all system users
+  # can generate quota warnings to anyone.
+  services:
+    - quota-warning:
+        executable: script /usr/local/bin/quota-warning.sh
+        user: dovecot
+        listeners:
+          - quota-warning:
+              type: unix
+              user: vmail
+
+dovecot_sieve_extprograms:
+  plugins:
+    - default:
+        sieve_pipe_socket_dir: sieve-pipe
+        sieve_filter_socket_dir: sieve-filter
+        sieve_execute_socket_dir: sieve-execute
+        sieve_pipe_bin_dir: /usr/lib/dovecot/sieve-pipe
+        sieve_filter_bin_dir: /usr/lib/dovecot/sieve-filter
+        sieve_execute_bin_dir: /usr/lib/dovecot/sieve-execute
+  services: []
+    # - do-something:
+    #     user: dovenull
+    #     executable: "script /usr/lib/dovecot/sieve-pipe/do-something.sh"
+    #     listeners:
+    #       - sieve-pipe/do-something:
+    #           type: unix
+    #           user: vmail
+    #           mode: "0600"
+
+dovecot_sieve:
+  plugins:
+    - default:
+        sieve: file:%h/sieve;active=%h/dovecot.sieve
+        sieve_dir: /srv/mail/sieve/%d/%u
+        sieve_global_dir: /srv/mail/sieve/global
+        sieve_extensions: "+notify +imapflags"
+
+dovecot_authentications:
+  - checkpassword:
+      passdb:
+        driver: checkpassword
+        args: /usr/bin/checkpassword
+      userdb:
+        driver: prefetch
+  - deny:
+      passdb:
+        driver: passwd-file
+        deny: true
+        args: /etc/dovecot/deny-users
+  - dict:
+      passdb:
+        driver: dict
+        args: /etc/dovecot/dovecot-dict-auth.conf.ext
+      userdb:
+        driver: dict
+        args: /etc/dovecot/dovecot-dict-auth.conf.ext
+  # - ldap:
+  #     passdb:
+  #       driver: ldap
+  #       args: /etc/dovecot/dovecot-ldap.conf.ext
+  #     userdb:
+  #       driver: ldap
+  #       args: /etc/dovecot/dovecot-ldap.conf.ext
+  #       default_fields: home=/home/virtual/%u
+  # - master:
+  #     passdb:
+  #       driver: passwd-file
+  #       master: true
+  #       args: /etc/dovecot/master-users
+  #       pass: true
+  - passwdfile:
+      passdb:
+        driver: passwd-file
+        args: scheme=CRYPT username_format=%u /etc/dovecot/users
+      userdb:
+        driver: passwd-file
+        args: username_format=%u /etc/dovecot/users
+        default_fields: quota_rule=*:storage=1G
+        # override_fields: home=/home/virtual/%u
+  # - sql:
+  #     passdb:
+  #       driver: sql
+  #       args: /etc/dovecot/dovecot-sql.conf.ext
+  #     userdb:
+  #       driver: sql
+  #       args: /etc/dovecot/dovecot-sql.conf.ext
+  - static:
+      passdb: {}
+      #   driver: static
+      #   # args: proxy=y host=%1Mu.example.com nopassword=y
+      userdb: {}
+      #   driver: static
+      #   # args: uid=vmail gid=vmail home=/home/%u
+  - system:
+      passdb:
+        driver: pam
+        # args: dovecot
+      userdb:
+        driver: passwd
+  # - vpopmail:
+  #     passdb:
+  #       driver: vpopmail
+  #     userdb:
+  #       driver: vpopmail
+  #       args: quota_template=quota_rule=*:backend=%q
+
+dovecot_dict_auth:
+  # uri: ""
+  default_pass_scheme: MD5
+  iterate_prefix: userdb/
+  # iterate_disable: false
+  dict_keys:
+    - passwd:
+        key: passdb/%u
+        format: json
+    - userdb:
+        key: userdb/%u
+        format: json
+    - quota:
+        key: userdb/%u/quota
+        default_value: 100M
+
+  passdb_objects:
+    - passdb
+  passdb_fields: {}
+  userdb_objects:
+    - userdb
+  userdb_fields:
+    quota_rule: "*:storage=%{dict:quota}"
+    mail: "maildir:%{dict:userdb.home}/Maildir"
+
+# https://doc.dovecot.org/configuration_manual/dict/#dict-sql
+dovecot_dict_sql:
+  connects:
+    host: localhost
+    dbname: mails
+    user: testuser
+    # password: pass
+  maps:
+    - pattern: priv/quota/storage
+      table: quota
+      username_field: username
+      value_field: bytes
+    - pattern: priv/quota/messages
+      table: quota
+      username_field: username
+      value_field: messages
+    - pattern: "shared/expire/$user/$mailbox"
+      table: expires
+      value_field: expire_stamp
+      fields:
+        username: $user
+        mailbox: $mailbox
+
+dovecot_sql:
+  driver: sqlite
+  connect: /etc/dovecot/authdb.sqlite
+  # driver: mysql
+  # connects:
+  #   host: localhost
+  #   dbname: mails
+  #   user: testuser
+  #   # password: pass
+  default_pass_scheme: CRAM-MD5
+  password_query: SELECT password FROM mailbox WHERE username = '%u'
+  user_query: |
+    SELECT
+      '/srv/mail/%d/%n' as home,
+      CONCAT('maildir:/srv/mail/', maildir) AS mail,
+      1101 AS uid,
+      1101 AS gid
+      FROM mailbox
+      WHERE username = '%u'
+  # iterate_query: SELECT username AS user FROM users
+
+...
