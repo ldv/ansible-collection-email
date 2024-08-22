@@ -32,6 +32,10 @@ env:
   PY_COLORS: '1'
   ANSIBLE_FORCE_COLOR: '1'
 
+defaults:
+  run:
+    working-directory: 'ansible-collection-${{ COLLECTION_NAME }}'
+
 jobs:
   arch:
     name: "${{ matrix.image }}: ${{ matrix.collection_role }} (ansible ${{ matrix.ansible-version }}, python ${{ matrix.python_version }})"
