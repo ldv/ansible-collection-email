@@ -1,0 +1,98 @@
+---
+
+- name: new aliases
+  postfix_newaliases:
+  when:
+    - not postfix_default.database_type == 'regexp'
+
+- name: new virtual aliases
+  postfix_postmap:
+    map_type: "{{ postfix_default.database_type | default('hash') }}"
+    filename: "{{ postfix_maps_directory }}/virtual"
+  when:
+    - not postfix_default.database_type == 'regexp'
+
+- name: postmap sasl_passwd
+  postfix_postmap:
+    map_type: "{{ postfix_default.database_type | default('hash') }}"
+    filename: "{{ postfix_maps_directory }}/sasl_passwd"
+  when:
+    - not postfix_default.database_type == 'regexp'
+
+- name: postmap sender_relay
+  postfix_postmap:
+    map_type: "{{ postfix_default.database_type | default('hash') }}"
+    filename: "{{ postfix_maps_directory }}/sender_relay"
+  when:
+    - not postfix_default.database_type == 'regexp'
+
+- name: postmap sender_canonical_maps
+  postfix_postmap:
+    map_type: "{{ postfix_sender.canonical_maps_database_type }}"
+    filename: "{{ postfix_maps_directory }}/sender_canonical_maps"
+  when:
+    - not postfix_sender.canonical_maps_database_type == 'regexp'
+
+- name: postmap recipient_canonical_maps
+  postfix_postmap:
+    map_type: "{{ postfix_recipient.canonical_maps_database_type }}"
+    filename: "{{ postfix_maps_directory }}/recipient_canonical_maps"
+  when:
+    - not postfix_recipient.canonical_maps_database_type == 'regexp'
+
+- name: postmap transport_maps
+  postfix_postmap:
+    map_type: "{{ postfix_transport.maps_database_type }}"
+    filename: "{{ postfix_maps_directory }}/transport_maps"
+  when:
+    - not postfix_transport.maps_database_type == 'regexp'
+
+- name: postmap sender_dependent_relayhost_maps
+  postfix_postmap:
+    map_type: "{{ postfix_default.database_type | default('hash') }}"
+    filename: "{{ postfix_maps_directory }}/sender_dependent_relayhost_maps"
+  when:
+    - not postfix_default.database_type == 'regexp'
+
+- name: postmap generic
+  postfix_postmap:
+    map_type: "{{ postfix_smtp.generic_maps_database_type }}"
+    filename: "{{ postfix_maps_directory }}/generic"
+  when:
+    - not postfix_smtp.generic_maps_database_type == 'regexp'
+
+- name: postfix maps result
+  ansible.builtin.debug:
+    msg: "{{ postfix_maps.result }}"
+  when:
+    - postfix_maps.changed or postfix_maps.failed
+
+- name: remove pid
+  ansible.builtin.file:
+    path: "~postfix/pid/master.pid"
+    state: absent
+  listen: restart postfix
+  when: is_docker_guest
+
+- name: validate config
+  postfix_check:
+    verbose: true
+  register: postfix_validate
+
+- name: restart service
+  ansible.builtin.service:
+    name: postfix
+    state: restarted
+  listen: restart postfix
+  when:
+    - service_default_state | default('started') == 'started'
+
+- name: reload service
+  ansible.builtin.service:
+    name: postfix
+    state: reloaded
+  listen: reload postfix
+  when:
+    - service_default_state | default('started') == 'started'
+
+...

@@ -1,0 +1,99 @@
+---
+
+postfix_inet:
+  interfaces:
+    - "{{ ansible_default_ipv4.address }}"
+
+postfix_smtpd:
+  banner: "$myhostname ESMTP $mail_name"
+  sender_login_maps:
+    - "proxy:mysql:{{ postfix_virtual_directory }}/mysql/login_maps.cf"
+  recipient_restrictions:
+    - check_recipient_mx_access
+    - permit_sasl_authenticated
+    - permit_mynetworks
+    - reject_invalid_helo_hostname
+    - reject_unauth_destination
+  data_restrictions:
+    - reject_unauth_pipelining
+    - permit
+  sender_restrictions:
+    - reject_authenticated_sender_login_mismatch
+    - permit_mynetworks
+    - permit_sasl_authenticated
+    - reject_unlisted_sender
+    - reject_unknown_sender_domain
+  relay_restrictions:
+    - permit_mynetworks
+    - permit_sasl_authenticated
+    - defer_unauth_destination
+    - reject_unauth_destination
+
+postfix_smtp:
+  # use_tls: true
+  generic_maps: "hash:/etc/postfix/generic"
+  header_checks: "hash:/etc/postfix/header_checks"
+
+postfix_relay:
+  use_tls: true
+  host: 'mail.test.com'
+  mxlookup: false
+  port: 587
+
+postfix_virtual:
+  alias_maps:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mysql/alias_maps.cf
+  mailbox_domains: proxy:mysql:{{ postfix_virtual_directory }}/mysql/domains_maps.cf
+  mailbox_maps:
+    - "proxy:mysql:{{ postfix_virtual_directory }}/mysql/mailbox_maps.cf"
+
+postfix_mydestinations:
+  - $myhostname
+  - "{{ postfix_hostname }}"
+  - localdomain
+  - localhost
+  - localhost.localdomain
+
+postfix_mynetworks:
+  - 127.0.0.0/8
+
+_database_defaults: &DATABASE_DEFAULTS
+  username: postfix
+  password: postfix
+  hosts: database
+  dbname: postfix
+
+postfix_virtual_backends:
+  mysql:
+    - name: alias_maps.cf
+      description: ""
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT goto FROM alias WHERE address='%s' AND active = 1;
+
+    - name: login_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT
+          username AS allowedUser
+        FROM mailbox
+        WHERE
+          username='%s' AND
+          active = 1
+        UNION
+          SELECT goto
+          FROM alias
+          WHERE
+            address='%s' AND
+            active = 1;
+
+    - name: domains_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+       SELECT domain FROM domain WHERE domain='%s' AND active = 1;
+
+    - name: mailbox_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT maildir FROM mailbox WHERE username='%s' AND active = 1;
+...

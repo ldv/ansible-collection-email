@@ -1,0 +1,245 @@
+---
+
+- name: detected install postfix version
+  postfix_postconf:
+    config_name: mail_version
+  register: _postfix_version
+
+- name: define postfix_version
+  ansible.builtin.set_fact:
+    postfix_version: "{{ _postfix_version.postconf_value }}"
+
+- name: postconf 'mail_version'
+  ansible.builtin.debug:
+    msg: "{{ postfix_version }}"
+
+- name: create maps.d directory
+  ansible.builtin.file:
+    state: directory
+    name: "{{ postfix_maps_directory }}"
+    mode: 0750
+
+- name: virtual file
+  when:
+    - ansible_distribution | lower in ["archlinux", "artix linux"]
+  block:
+    - name: detect virtual file
+      ansible.builtin.stat:
+        path: "{{ postfix_virtual_directory }}"
+        get_checksum: false
+      register: stat_postfix_virtual
+      ignore_errors: true
+
+    - name: remove virtual file
+      ansible.builtin.file:
+        state: absent
+        path: "{{ postfix_virtual_directory }}"
+      when:
+        - stat_postfix_virtual is defined
+        - stat_postfix_virtual.stat is defined
+        - stat_postfix_virtual.stat.isdir is defined
+        - not stat_postfix_virtual.stat.isdir
+
+- name: create virtual directory
+  ansible.builtin.file:
+    state: directory
+    name: "{{ postfix_virtual_directory }}"
+    mode: 0750
+
+- name: configure mailname
+  ansible.builtin.template:
+    src: etc/postfix/mailname.j2
+    dest: "{{ postfix_mailname_file }}"
+    owner: root
+    group: root
+    mode: 0644
+    backup: true
+  notify:
+    - reload postfix
+  tags:
+    - configuration
+    - postfix
+    - postfix-mailname
+
+- name: postfix sasl and relay
+  when:
+    - postfix_users is defined
+    - postfix_users.sasl_auth is defined or
+      postfix_users.relay is defined
+    - postfix_smtp.sasl.auth is defined
+    - postfix_smtp.sasl.auth.enable | default('false') | bool
+  tags:
+    - postfix
+    - postfix-configuration
+    - postfix-sasl
+    - postfix-relay
+  block:
+    - name: configure sasl username/password
+      ansible.builtin.template:
+        src: etc/postfix/maps.d/sasl_passwd.j2
+        dest: "{{ postfix_maps_directory }}/sasl_passwd"
+        owner: root
+        group: root
+        mode: 0660
+        backup: true
+      # no_log: true
+      notify:
+        - postmap sasl_passwd
+        - restart postfix
+      tags:
+        - postfix
+        - postfix-configuration
+        - postfix-sasl
+
+    - name: configure sender relay
+      ansible.builtin.template:
+        src: etc/postfix/maps.d/sender_relay.j2
+        dest: "{{ postfix_maps_directory }}/sender_relay"
+        owner: root
+        group: root
+        mode: 0660
+        backup: true
+      notify:
+        - postmap sender_relay
+        - restart postfix
+      tags:
+        - postfix
+        - postfix-configuration
+        - postfix-relay
+
+- name: configure aliases
+  ansible.builtin.template:
+    src: etc/postfix/aliases.j2
+    dest: "{{ postfix_aliases_file }}"
+    owner: root
+    group: root
+    mode: 0644
+    backup: true
+  notify:
+    - new aliases
+    - restart postfix
+  when:
+    - postfix_aliases is defined
+    - postfix_aliases | count > 0
+  tags:
+    - configuration
+    - postfix
+    - postfix-aliases
+
+# - name: check if aliases.db exists
+#   ansible.builtin.stat:
+#     path: "{{ postfix_aliases_file }}.db"
+#   register: _aliasesdb
+#   changed_when: not _aliasesdb.stat.exists
+#   when:
+#     - postfix_default.database_type == 'hash'
+#   notify:
+#     - new aliases
+#     - restart postfix
+#   tags:
+#     - configuration
+#     - postfix
+#     - postfix-aliases
+
+- name: create postfix maps
+  postfix_maps:
+    maps:
+      - name: virtual
+        map:
+          file: "{{ postfix_maps_directory }}/virtual"
+          vars: "{{ postfix_virtual.aliases | default([]) }}"
+        postmap: true
+      - name: sender_canonical_maps
+        map:
+          file: "{{ postfix_maps_directory }}/sender_canonical_maps"
+          vars: "{{ postfix_sender.canonical_maps | default([]) }}"
+      - name: recipient_canonical_maps
+        map:
+          file: "{{ postfix_maps_directory }}/recipient_canonical_maps"
+          vars: "{{ postfix_recipient.canonical_maps | default([]) }}"
+      - name: transport_maps
+        map:
+          file: "{{ postfix_maps_directory }}/transport_maps"
+          vars: "{{ postfix_transport.transport_maps | default([]) }}"
+      - name: sender_dependent_relayhost_maps
+        map:
+          file: "{{ postfix_maps_directory }}/sender_dependent_relayhost_maps"
+          vars: "{{ postfix_sender.dependent_relayhost_maps.canonical_maps | default([]) }}"
+      - name: generic
+        map:
+          file: "{{ postfix_maps_directory }}/generic"
+          vars: "{{ postfix_smtp.generic_maps | default([]) }}"
+  register: postfix_maps
+  changed_when: false
+  tags:
+    - postfix
+    - postfix-configuration
+    - postfix-maps
+  notify:
+    - postfix maps result
+    - reload service
+
+- name: configure header checks
+  ansible.builtin.template:
+    src: etc/postfix/header_checks.j2
+    dest: "{{ postfix_maps_directory }}/header_checks"
+    owner: root
+    group: root
+    mode: 0644
+    backup: true
+  notify:
+    - restart postfix
+  tags:
+    - configuration
+    - postfix
+    - postfix-header-checks-table
+
+- name: create virtual backend configurations
+  postfix_virtual_backends:
+    backends: "{{ postfix_virtual_backends }}"
+    dest: "{{ postfix_virtual_directory }}"
+  notify:
+    - restart postfix
+  tags:
+    - configuration
+    - postfix
+    - postfix-virtual-backends
+
+- name: update main configuration file
+  ansible.builtin.template:
+    src: etc/postfix/main.cf.j2
+    dest: "{{ postfix_config_directory }}/main.cf"
+    owner: root
+    group: root
+    mode: 0644
+    backup: true
+  notify:
+    - validate config
+    - restart postfix
+  tags:
+    - configuration
+    - postfix
+    - postfix-configuration
+
+- name: update master configuration file
+  ansible.builtin.template:
+    src: etc/postfix/master.cf.j2
+    dest: "{{ postfix_config_directory }}/master.cf"
+    owner: root
+    group: root
+    mode: 0644
+    backup: true
+  notify:
+    - validate config
+    - restart postfix
+  when:
+    - postfix_handle_mastercf
+  tags:
+    - configuration
+    - postfix
+    - postfix-configuration
+
+- name: flush handlers at this point to avoid double restart
+  ansible.builtin.meta: flush_handlers
+
+...
