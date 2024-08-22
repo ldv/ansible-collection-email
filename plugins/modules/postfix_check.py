@@ -66,8 +66,8 @@ class PostfixCheck(object):
         rc, out, err = self.module.run_command(cmd, encoding=None, check_rc=False)
 
         if rc != 0:
-            _out  = out.split("\n")
-            _err  = err.split("\n")
+            _out = out.split("\n")
+            _err = err.split("\n")
             self.module.log(f" - out: '{out}' ({type(out)}) - {len(out)}")
             self.module.log(f" - err: '{err}' ({type(err)}) - {len(err)}")
             self.module.log(f" - out: '{_out}'")
