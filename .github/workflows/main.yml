@@ -34,7 +34,7 @@ env:
 
 defaults:
   run:
-    working-directory: 'ansible-collection-${{ env.COLLECTION_NAME }}'
+    working-directory: 'ansible-collection-email'
 
 jobs:
   arch:
