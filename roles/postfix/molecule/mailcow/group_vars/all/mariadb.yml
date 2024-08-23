@@ -1,5 +1,8 @@
 ---
 
+# mariadb_use_external_repo: true
+# mariadb_version: 10.5
+
 mariadb_root_password: Y5FZfKXzCeOWGf4kBOiFSp6Il
 
 mariadb_root_password_update: true

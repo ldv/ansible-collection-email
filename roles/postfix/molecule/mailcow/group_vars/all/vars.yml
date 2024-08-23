@@ -1,0 +1,457 @@
+---
+
+postfix_inet:
+  interfaces:
+    - "{{ ansible_default_ipv4.address }}"
+
+postfix_smtpd:
+  banner: "$myhostname ESMTP $mail_name"
+  sender_login_maps:
+    # - "proxy:mysql:{{ postfix_virtual_directory }}/mysql/login_maps.cf"
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_sender_acl.cf
+  recipient_restrictions:
+    - check_recipient_mx_access
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_mbr_access_maps.cf
+    - permit_sasl_authenticated
+    - permit_mynetworks
+    - check_recipient_access
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_tls_enforce_in_policy.cf
+    - reject_invalid_helo_hostname
+    - reject_unauth_destination
+  data_restrictions:
+    - reject_unauth_pipelining
+    - permit
+  sender_restrictions:
+    - reject_authenticated_sender_login_mismatch
+    - permit_mynetworks
+    - permit_sasl_authenticated
+    - reject_unlisted_sender
+    - reject_unknown_sender_domain
+  relay_restrictions:
+    - permit_mynetworks
+    - permit_sasl_authenticated
+    - defer_unauth_destination
+    - reject_unauth_destination
+
+postfix_smtp:
+  # use_tls: true
+  generic_maps: "lmdb:/etc/postfix/generic"
+  header_checks: "lmdb:/etc/postfix/header_checks"
+  tls:
+    policy_maps:
+      - proxy:mysql:{{ postfix_virtual_directory }}/mc_tls_policy_override_maps.cf
+  sasl:
+    password_maps:
+      - proxy:mysql:{{ postfix_virtual_directory }}/mc_sasl_passwd_maps_sender_dependent.cf
+
+postfix_relay:
+  use_tls: true
+  host: 'mail.test.com'
+  mxlookup: false
+  port: 587
+  domains:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_relay_domain_maps.cf
+  recipient_maps:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_relay_recipient_maps.cf
+
+postfix_sender:
+  dependent_default_transport_maps:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_sender_dependent_default_transport_maps.cf
+
+postfix_recipient:
+  canonical_maps:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_recipient_canonical_maps.cf
+
+postfix_mydestinations:
+  - $myhostname
+  - "{{ postfix_hostname }}"
+  - localdomain
+  - localhost
+  - localhost.localdomain
+
+postfix_mynetworks:
+  - 127.0.0.0/8
+
+_database_defaults: &DATABASE_DEFAULTS
+  username: postfix
+  password: postfix
+  hosts: database
+  dbname: postfix
+
+postfix_virtual:
+  alias_maps:
+    # - proxy:mysql:/etc/postfix/virtual/mysql/alias_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_alias_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_resource_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_spamalias_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_alias_domain_maps.cf
+  mailbox_domains:
+    # - proxy:mysql:/etc/postfix/virtual/mysql/domains_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_domains_maps.cf
+  mailbox_maps:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_virtual_mailbox_maps.cf
+    # - proxy:mysql:/etc/postfix/virtual/mysql/mailbox_maps.cf
+
+postfix_virtual_backends:
+  mysql:
+    - name: mc_transport_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT('smtp_via_transport_maps:', nexthop) AS transport FROM transports
+          WHERE active = '1'
+          AND destination = '%s'
+
+    - name: mc_mbr_access_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT('FILTER smtp_via_transport_maps:', nexthop) as transport FROM transports
+          WHERE '%s' REGEXP destination
+            AND active='1'
+            AND is_mx_based='1'
+
+    - name: mc_sasl_passwd_maps_transport_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT_WS(':', username, password) AS auth_data FROM transports
+          WHERE nexthop = '%s'
+          AND active = '1'
+          AND username != ''
+          LIMIT 1
+
+    - name: mc_mbr_access_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT('FILTER smtp_via_transport_maps:', nexthop) as transport FROM transports
+          WHERE '%s' REGEXP destination
+            AND active='1'
+            AND is_mx_based='1'
+
+    - name: mc_recipient_bcc_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT bcc_dest FROM bcc_maps
+          WHERE local_dest='%s'
+            AND type='rcpt'
+            AND active='1'
+
+    - name: mc_recipient_canonical_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT new_dest FROM recipient_maps
+          WHERE old_dest='%s'
+          AND active='1'
+
+    - name: mc_relay_ne.cf
+      description: ""
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT IF(EXISTS(SELECT address, domain FROM alias
+              WHERE address = '%s'
+                AND domain IN (
+                  SELECT domain FROM domain
+                    WHERE backupmx = '1'
+                      AND relay_all_recipients = '1'
+                      AND relay_unknown_only = '1')
+
+              ), 'lmtp:inet:dovecot:24', NULL) AS 'transport'
+
+    - name: mc_relay_recipient_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT DISTINCT
+          CASE WHEN '%d' IN (
+            SELECT domain FROM domain
+              WHERE relay_all_recipients=1
+                AND domain='%d'
+                AND backupmx=1
+          )
+          THEN '%s' ELSE (
+            SELECT goto FROM alias WHERE address='%s' AND active='1'
+          )
+          END AS result
+
+    - name: mc_sasl_access_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT 'REJECT' FROM mailbox WHERE username = '%u' AND JSON_UNQUOTE(JSON_VALUE(attributes, '$.smtp_access')) = '0';
+
+    - name: mc_sasl_passwd_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT_WS(':', username, password) AS auth_data FROM relayhosts
+          WHERE id IN (
+            SELECT relayhost FROM domain
+              WHERE CONCAT('@', domain) = '%s'
+              OR '%s' IN (
+                SELECT CONCAT('@', alias_domain) FROM alias_domain
+              )
+          )
+          AND username != ''
+
+    - name: mc_sasl_passwd_maps_sender_dependent.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT_WS(':', username, password) AS auth_data FROM relayhosts
+          WHERE id IN (
+            SELECT COALESCE(
+              (SELECT id FROM relayhosts
+              LEFT OUTER JOIN domain ON domain.relayhost = relayhosts.id
+              WHERE relayhosts.active = '1'
+                AND (domain.domain = '%d'
+                  OR domain.domain IN (
+                    SELECT target_domain FROM alias_domain
+                    WHERE alias_domain = '%d'
+                  )
+                )
+              ),
+              (SELECT id FROM relayhosts
+              LEFT OUTER JOIN mailbox ON JSON_UNQUOTE(JSON_VALUE(mailbox.attributes, '$.relayhost')) = relayhosts.id
+              WHERE relayhosts.active = '1'
+                AND (
+                  mailbox.username IN (
+                    SELECT alias.goto from alias
+                      JOIN mailbox ON mailbox.username = alias.goto
+                        WHERE alias.active = '1'
+                          AND alias.address = '%s'
+                          AND alias.address NOT LIKE '@%%'
+                  )
+                )
+              )
+            )
+          )
+          AND active = '1'
+          AND username != ''
+
+    - name: mc_sasl_passwd_maps_transport_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT_WS(':', username, password) AS auth_data FROM transports
+          WHERE nexthop = '%s'
+          AND active = '1'
+          AND username != ''
+          LIMIT 1
+
+    - name: mc_sender_bcc_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT bcc_dest FROM bcc_maps
+          WHERE local_dest='%s'
+            AND type='sender'
+            AND active='1'
+
+    - name: mc_sender_dependent_default_transport_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT GROUP_CONCAT(transport SEPARATOR '') AS transport_maps
+          FROM (
+            SELECT IF(EXISTS(SELECT 'smtp_type' FROM alias
+              LEFT OUTER JOIN mailbox ON mailbox.username = alias.goto
+                WHERE (address = '%s'
+                  OR address IN (
+                    SELECT CONCAT('%u', '@', target_domain) FROM alias_domain
+                      WHERE alias_domain = '%d'
+                  )
+                )
+                AND JSON_UNQUOTE(JSON_VALUE(attributes, '$.tls_enforce_out')) = '1'
+                AND mailbox.active = '1'
+            ), 'smtp_enforced_tls:', 'smtp:') AS 'transport'
+            UNION ALL
+            SELECT COALESCE(
+              (SELECT hostname FROM relayhosts
+              LEFT OUTER JOIN mailbox ON JSON_UNQUOTE(JSON_VALUE(mailbox.attributes, '$.relayhost')) = relayhosts.id
+                WHERE relayhosts.active = '1'
+                  AND (
+                    mailbox.username IN (SELECT alias.goto from alias
+                      JOIN mailbox ON mailbox.username = alias.goto
+                        WHERE alias.active = '1'
+                          AND alias.address = '%s'
+                          AND alias.address NOT LIKE '@%%'
+                    )
+                  )
+              ),
+              (SELECT hostname FROM relayhosts
+              LEFT OUTER JOIN domain ON domain.relayhost = relayhosts.id
+                WHERE relayhosts.active = '1'
+                  AND (domain.domain = '%d'
+                    OR domain.domain IN (
+                      SELECT target_domain FROM alias_domain
+                        WHERE alias_domain = '%d'
+                    )
+                  )
+              )
+            )
+          ) AS transport_view
+
+    - name: mc_tls_enforce_in_policy.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT IF(EXISTS(
+          SELECT 'TLS_ACTIVE' FROM alias
+            LEFT OUTER JOIN mailbox ON mailbox.username = alias.goto
+              WHERE (address='%s'
+                OR address IN (
+                  SELECT CONCAT('%u', '@', target_domain) FROM alias_domain
+                    WHERE alias_domain='%d'
+                )
+              ) AND JSON_UNQUOTE(JSON_VALUE(attributes, '$.tls_enforce_in')) = '1' AND mailbox.active = '1'
+          ), 'reject_plaintext_session', NULL) AS 'tls_enforce_in'
+
+    - name: mc_tls_policy_override_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT(policy, ' ', parameters) AS tls_policy FROM tls_policy_override WHERE active = '1' AND dest = '%s'
+
+    - name: mc_transport_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT('smtp_via_transport_maps:', nexthop) AS transport FROM transports
+          WHERE active = '1'
+          AND destination = '%s'
+
+    - name: mc_virtual_alias_domain_catchall_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT goto FROM alias, alias_domain
+          WHERE alias_domain.alias_domain = '%d'
+            AND alias.address = CONCAT('@', alias_domain.target_domain)
+            AND alias.active = 1 AND alias_domain.active='1'
+
+    - name: mc_virtual_alias_domain_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT username FROM mailbox, alias_domain
+          WHERE alias_domain.alias_domain = '%d'
+            AND mailbox.username = CONCAT('%u', '@', alias_domain.target_domain)
+            AND (mailbox.active = '1' OR mailbox.active = '2')
+            AND alias_domain.active='1'
+
+    - name: mc_virtual_alias_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT goto FROM alias
+          WHERE address='%s'
+          AND (active='1' OR active='2')
+
+    - name: mc_virtual_domains_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT alias_domain from alias_domain WHERE alias_domain='%s' AND active='1'
+          UNION
+          SELECT domain FROM domain
+            WHERE domain='%s'
+              AND active = '1'
+              AND backupmx = '0'
+
+    - name: mc_virtual_mailbox_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT CONCAT(JSON_UNQUOTE(JSON_VALUE(attributes, '$.mailbox_format')), mailbox_path_prefix, '%d/%u/') FROM mailbox WHERE username='%s' AND (active = '1' OR active = '2')
+
+    - name: mc_virtual_relay_domain_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT domain FROM domain WHERE domain='%s' AND backupmx = '1' AND active = '1'
+
+    - name: mc_virtual_resource_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT 'null@localhost' FROM mailbox
+          WHERE kind REGEXP 'location|thing|group' AND username = '%s'
+
+    - name: mc_virtual_sender_acl.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT goto FROM alias
+          WHERE id IN (
+              SELECT COALESCE (
+                (
+                  SELECT id FROM alias
+                    WHERE address='%s'
+                    AND (active='1' OR active='2')
+                ), (
+                  SELECT id FROM alias
+                    WHERE address='@%d'
+                    AND (active='1' OR active='2')
+                )
+              )
+            )
+            AND active='1'
+            AND (domain IN
+              (SELECT domain FROM domain
+                WHERE domain='%d'
+                  AND active='1')
+              OR domain in (
+                SELECT alias_domain FROM alias_domain
+                  WHERE alias_domain='%d'
+                    AND active='1'
+              )
+            )
+          UNION
+          SELECT logged_in_as FROM sender_acl
+            WHERE send_as='@%d'
+              OR send_as='%s'
+              OR send_as='*'
+              OR send_as IN (
+                SELECT CONCAT('@',target_domain) FROM alias_domain
+                  WHERE alias_domain = '%d')
+              OR send_as IN (
+                SELECT CONCAT('%u','@',target_domain) FROM alias_domain
+                  WHERE alias_domain = '%d')
+              AND logged_in_as NOT IN (
+                SELECT goto FROM alias
+                  WHERE address='%s')
+          UNION
+          SELECT username FROM mailbox, alias_domain
+            WHERE alias_domain.alias_domain = '%d'
+              AND mailbox.username = CONCAT('%u','@',alias_domain.target_domain)
+              AND (mailbox.active = '1' OR mailbox.active ='2')
+              AND alias_domain.active='1'
+
+    - name: mc_virtual_spamalias_maps.cf
+      <<: *DATABASE_DEFAULTS
+      query: |
+        SELECT goto FROM spamalias
+          WHERE address='%s'
+            AND validity >= UNIX_TIMESTAMP()
+
+postfix_transport:
+  transport_maps:
+    - pattern: '/watchdog@localhost$/'
+      result: 'watchdog_discard:'
+    - pattern: '/localhost$/'
+      result: "local:"
+  maps:
+    - "lmdb:{{ postfix_maps_directory }}/transport_maps"
+    # - pcre:/opt/postfix/conf/custom_transport.pcre
+    # - pcre:/opt/postfix/conf/local_transport
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_relay_ne.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_transport_maps.cf
+
+postfix_proxy:
+  read_maps:
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_sasl_passwd_maps_transport_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_mbr_access_maps.cf
+    - proxy:mysql:{{ postfix_virtual_directory }}/mc_tls_enforce_in_policy.cf
+    - "$sender_dependent_default_transport_maps"
+    - "$smtp_tls_policy_maps"
+    - "$local_recipient_maps"
+    - "$mydestination"
+    - "$virtual_alias_maps"
+    - "$virtual_alias_domains"
+    - "$virtual_mailbox_maps"
+    - "$virtual_mailbox_domains"
+    - "$relay_recipient_maps"
+    - "$relay_domains"
+    - "$canonical_maps"
+    - "$sender_canonical_maps"
+    - "$sender_bcc_maps"
+    - "$recipient_bcc_maps"
+    - "$recipient_canonical_maps"
+    - "$relocated_maps"
+    - "$transport_maps"
+    - "$mynetworks"
+    - "$smtpd_sender_login_maps"
+    - "$smtp_sasl_password_maps"
+
+
+...

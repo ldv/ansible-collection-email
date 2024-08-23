@@ -3,10 +3,10 @@
 - name: converge
   hosts: instance
   any_errors_fatal: false
-  gather_facts: true
+  become: false
 
   environment:
     NETRC: ''
 
   roles:
-    - role: bodsch.email.dovecot
+    - role: bodsch.email.postfix

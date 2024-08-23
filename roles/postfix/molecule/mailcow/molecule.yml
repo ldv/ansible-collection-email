@@ -25,12 +25,12 @@ platforms:
       - /run
       - /tmp
     docker_networks:
-      - name: dovecot
+      - name: postfix
         ipam_config:
           - subnet: "10.12.0.0/24"
             gateway: "10.12.0.1"
     networks:
-      - name: dovecot
+      - name: postfix
         ipv4_address: "10.12.0.10"
 
   - name: instance
@@ -49,7 +49,7 @@ platforms:
       - /run
       - /tmp
     networks:
-      - name: dovecot
+      - name: postfix
         ipv4_address: "10.12.0.20"
 
 provisioner:

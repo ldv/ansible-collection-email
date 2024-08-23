@@ -313,8 +313,10 @@ postfix_defaults_relay:
   mxlookup: false
   host: ''                                          # mail.test.com
   port: 587                                         # 587
-  domains_file: ''
-  recipient_maps_file: ''
+  domains: []
+  recipient_maps: []
+  # domains_file: ''
+  # recipient_maps_file: ''
 
 postfix_defaults_sender:
   based_routing: false

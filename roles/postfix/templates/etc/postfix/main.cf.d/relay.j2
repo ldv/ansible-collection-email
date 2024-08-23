@@ -39,10 +39,21 @@ relay_destination_rate_delay              = {{ postfix_relay.destination_rate_de
       postfix_relay.destination_recipient_limit | string | length > 0 %}
 relay_destination_recipient_limit         = {{ postfix_relay.destination_recipient_limit }}
 {% endif %}
+{% if postfix_relay.domains is defined and
+      postfix_relay.domains | length > 0 %}
+  {% if postfix_relay.domains | bodsch.core.type == "list" %}
+relay_domains                             =
+    {{ postfix_relay.domains | join("\n") | indent(4)  }}
+  {% else %}
+relay_domains                             = {{ postfix_relay.domains }}
+  {% endif %}
+{% endif %}
+{# obsolete
 {% if postfix_relay.domains and
       postfix_relay.domains | string | length > 0 %}
 relay_domains                             = {{ postfix_relay.domains }}
 {% endif %}
+#}
 {% if postfix_relay.domains_reject_code and
       postfix_relay.domains_reject_code | string | length > 0 %}
 relay_domains_reject_code                 = {{ postfix_relay.domains_reject_code }}
@@ -63,10 +74,22 @@ relay_minimum_delivery_slots              = {{ postfix_relay.minimum_delivery_sl
       postfix_relay.recipient_limit | string | length > 0 %}
 relay_recipient_limit                     = {{ postfix_relay.recipient_limit }}
 {% endif %}
+
+{% if postfix_relay.recipient_maps is defined and
+      postfix_relay.recipient_maps | length > 0 %}
+  {% if postfix_relay.recipient_maps | bodsch.core.type == "list" %}
+relay_recipient_maps                      =
+    {{ postfix_relay.recipient_maps | join("\n") | indent(4)  }}
+  {% else %}
+relay_recipient_maps                      = {{ postfix_relay.recipient_maps }}
+  {% endif %}
+{% endif %}
+{# obsolete
 {% if postfix_relay.recipient_maps_file and
       postfix_relay.recipient_maps_file | string | length > 0 %}
 relay_recipient_maps                      = {{ postfix_relay.recipient_maps_file }}
 {% endif %}
+#}
 {% if postfix_relay.recipient_refill_delay and
       postfix_relay.recipient_refill_delay | string | length > 0 %}
 relay_recipient_refill_delay              = {{ postfix_relay.recipient_refill_delay }}

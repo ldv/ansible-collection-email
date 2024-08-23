@@ -7,6 +7,7 @@
 
 from __future__ import absolute_import, division, print_function
 import os
+import shutil
 import hashlib
 import json
 
@@ -37,6 +38,7 @@ class PostfixVirtualBackends(object):
 
         self.dest = module.params.get("dest")
         self.backends = module.params.get("backends")
+        self.force = module.params.get("force")
         self.cache_directory = "/var/cache/ansible/postfix"
 
     def run(self):
@@ -49,6 +51,10 @@ class PostfixVirtualBackends(object):
         self.checksum = Checksum(self.module)
 
         result_state = []
+
+        if self.force:
+            if os.path.exists(self.cache_directory):
+                shutil.rmtree(self.cache_directory)
 
         create_directory(self.cache_directory)
         checksum_file = os.path.join(self.cache_directory, "backends")
@@ -210,6 +216,11 @@ def main():
         backends = dict(
             required=True,
             type='dict'
+        ),
+        force = dict(
+            required=False,
+            type='bool',
+            default=False,
         ),
         dest = dict(
             required=True,

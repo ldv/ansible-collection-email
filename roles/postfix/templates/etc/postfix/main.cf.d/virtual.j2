@@ -90,10 +90,22 @@ virtual_initial_destination_concurrency   = {{ postfix_virtual.initial_destinati
       postfix_virtual.mailbox_base | string | length > 0 %}
 virtual_mailbox_base                      = {{ postfix_virtual.mailbox_base }}
 {% endif %}
+
+{% if postfix_virtual.mailbox_domains is defined and
+      postfix_virtual.mailbox_domains | count > 0 %}
+  {% if postfix_virtual.mailbox_domains | bodsch.core.type == "list" %}
+virtual_mailbox_domains                   =
+    {{ postfix_virtual.mailbox_domains | join("\n") | indent(4) }}
+  {% else %}
+virtual_mailbox_domains                   = {{ postfix_virtual.mailbox_domains }}
+  {% endif %}
+{% endif %}
+{# obsole
 {% if postfix_virtual.mailbox_domains is defined and
       postfix_virtual.mailbox_domains | string | length > 0 %}
 virtual_mailbox_domains                   = {{ postfix_virtual.mailbox_domains }}
 {% endif %}
+#}
 {% if postfix_virtual.mailbox_limit is defined and
       postfix_virtual.mailbox_limit | string | length > 0 %}
 virtual_mailbox_limit                     = {{ postfix_virtual.mailbox_limit }}

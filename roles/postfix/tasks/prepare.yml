@@ -46,14 +46,14 @@
     postfix_smtpd: "{{ postfix_defaults_smtpd | combine(postfix_smtpd, recursive=True) }}"
 
 - name: validate smtpd tls certificate files
-  postfix_validate_certs:
+  bodsch.email.postfix_validate_certs:
     config: "{{ postfix_smtpd.tls }}"
   when:
     - postfix_smtpd.use_tls | bool
     - postfix_smtpd.tls is defined
 
 - name: validate smtp tls certificate files
-  postfix_validate_certs:
+  bodsch.email.postfix_validate_certs:
     config: "{{ postfix_smtp.tls }}"
   when:
     - postfix_smtp.use_tls | bool

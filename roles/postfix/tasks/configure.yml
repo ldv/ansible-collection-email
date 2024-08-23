@@ -28,7 +28,7 @@
     postfix_master: "{{ postfix_defaults_master | combine(postfix_master, recursive=True) }}"
 
 - name: detected install postfix version
-  postfix_postconf:
+  bodsch.email.postfix_postconf:
     config_name: mail_version
   register: _postfix_version
 
@@ -177,7 +177,7 @@
 #     - postfix-aliases
 
 - name: create postfix maps
-  postfix_maps:
+  bodsch.email.postfix_maps:
     maps:
       - name: virtual
         map:
@@ -230,7 +230,8 @@
     - postfix-header-checks-table
 
 - name: create virtual backend configurations
-  postfix_virtual_backends:
+  bodsch.email.postfix_virtual_backends:
+    force: false
     backends: "{{ postfix_virtual_backends }}"
     dest: "{{ postfix_virtual_directory }}"
   notify:
