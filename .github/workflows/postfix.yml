@@ -167,7 +167,8 @@ jobs:
           - configured
           - enabled-tls
           - with-database
-          # - mailcow-compatible
+          - mailcow
+          - postfixadmin
           # - proxy_sql_minimal
         collection_role:
           - postfix
