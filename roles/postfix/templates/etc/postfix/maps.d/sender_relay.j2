@@ -10,7 +10,7 @@
     dependent_relayhost_maps = hash:/etc/postfix/maps.d/sender_relay
 #}
 {% for r in relay_data %}
-  {% set data = r | relay_data(sasl_data, mxlookup) %}
+  {% set data = r | bodsch.email.relay_data(sasl_data, mxlookup) %}
   {% if data and data.error is defined and not data.error %}
     {% if data.description is defined and data.description | string | length > 0 %}
 # {{ data.description }}

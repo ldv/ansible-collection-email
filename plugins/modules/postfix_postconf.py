@@ -9,6 +9,31 @@ import re
 
 from ansible.module_utils.basic import AnsibleModule
 
+DOCUMENTATION = r"""
+---
+module: postfix_postconf
+author: Bodo 'bodsch' Schulz <bodo@boone-schulz.de>
+version_added: 1.0.0
+
+short_description: TBD
+description:
+    - TBD
+
+options:
+  config_name:
+    description: TBD
+    required: true
+    type: str
+"""
+
+EXAMPLES = r"""
+"""
+
+RETURN = r"""
+"""
+
+# ----------------------------------------------------------------------
+
 
 class PostfixPostconf(object):
     """

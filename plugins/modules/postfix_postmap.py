@@ -9,6 +9,43 @@ import os
 
 from ansible.module_utils.basic import AnsibleModule
 
+DOCUMENTATION = r"""
+---
+module: postfix_postmap
+author: Bodo 'bodsch' Schulz <bodo@boone-schulz.de>
+version_added: 1.0.0
+
+short_description: TBD
+description:
+    - TBD
+
+options:
+  map_type:
+    description:
+      - (C(btree))
+      - (C(cdb))
+      - (C(dbm))
+      - (C(fail))
+      - (C(lmdb))
+      - (C(sdbm))
+    required: true
+    default: lmdb
+
+  filename:
+    description: TBD
+    required: true
+    type: str
+    type: bool
+"""
+
+EXAMPLES = r"""
+"""
+
+RETURN = r"""
+"""
+
+# ----------------------------------------------------------------------
+
 
 class PostfixPostmap(object):
     """

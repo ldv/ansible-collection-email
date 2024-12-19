@@ -8,6 +8,31 @@ from __future__ import absolute_import, division, print_function
 
 from ansible.module_utils.basic import AnsibleModule
 
+DOCUMENTATION = r"""
+---
+module: postfix_newaliases
+author: Bodo 'bodsch' Schulz <bodo@boone-schulz.de>
+version_added: 1.0.0
+
+short_description: TBD
+description:
+    - TBD
+
+options:
+  alias_database:
+    description: TBD
+    required: false
+    type: str
+"""
+
+EXAMPLES = r"""
+"""
+
+RETURN = r"""
+"""
+
+# ----------------------------------------------------------------------
+
 
 class PostfixNewaliases(object):
     """

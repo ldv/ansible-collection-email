@@ -3,7 +3,7 @@
 
 {% if dovecot_dict_sql.connects is defined  and
       dovecot_dict_sql.connects | count > 0 %}
-connect                       = {{ dovecot_dict_sql.connects | database_connection }}
+connect                       = {{ dovecot_dict_sql.connects | bodsch.email.database_connection }}
 {% endif %}
 
 {% if dovecot_dict_sql.maps is defined and

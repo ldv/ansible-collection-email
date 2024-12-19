@@ -10,7 +10,7 @@
       password_maps = hash:/etc/postfix/sasl_passwd
 #}
 {% for u in sasl_data %}
-  {% set data = u | sasl_data(mxlookup) %}
+  {% set data = u | bodsch.email.sasl_data(mxlookup) %}
   {% if data.description is defined and data.description | string | length > 0 %}
 # {{ data.description }}
   {% endif %}

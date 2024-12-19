@@ -9,6 +9,36 @@ import os
 
 from ansible.module_utils.basic import AnsibleModule
 
+DOCUMENTATION = r"""
+---
+module: postfix_validate_certs
+author: Bodo 'bodsch' Schulz <bodo@boone-schulz.de>
+version_added: 1.0.0
+
+short_description: TBD
+description:
+    - TBD
+
+options:
+  verbose:
+    description: TBD
+    required: false
+    type: bool
+
+  config:
+    description: TBD
+    required: true
+    type: dict
+"""
+
+EXAMPLES = r"""
+"""
+
+RETURN = r"""
+"""
+
+# ----------------------------------------------------------------------
+
 
 class PostfixValidateCerts(object):
     """

@@ -12,7 +12,7 @@ connect                       = {{ dovecot_sql.connect }}
 {% endif %}
 {% if dovecot_sql.connects is defined and
       dovecot_sql.connects | string | length > 0 %}
-connect                       = {{ dovecot_sql.connects | database_connection }}
+connect                       = {{ dovecot_sql.connects | bodsch.email.database_connection }}
 {% endif %}
 
 {% if dovecot_sql.default_pass_scheme is defined and

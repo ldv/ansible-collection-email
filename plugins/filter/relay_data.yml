@@ -1,0 +1,30 @@
+
+DOCUMENTATION:
+  name: relay_data
+  author: Bodo Schulz (@bodsch)
+  version_added: 1.0.0
+  short_description: enhance relay data for valid relay host and port
+  description:
+    - enhance relay data for valid relay host and port
+  positional: _input
+  options:
+    _input:
+      description: TBD
+      type: dict
+      required: true
+    sasl_data:
+      description: TBD
+      required: true
+      type: dict
+    mxlookup:
+      description: TBD
+      required: false
+      type: bool
+      default: false
+  notes:
+
+EXAMPLES: |
+  data = r | bodsch.email.relay_data(sasl_data, mxlookup)
+
+RETURN:
+  _value: TBD

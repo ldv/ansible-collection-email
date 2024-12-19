@@ -1,0 +1,21 @@
+
+DOCUMENTATION:
+  name: postfix_map_data
+  author: Bodo Schulz (@bodsch)
+  version_added: 1.0.0
+  short_description: creates valid data fpr postfix maps files
+  description:
+    - creates valid data fpr postfix maps files
+  positional: _input
+  options:
+    _input:
+      description: list fof dict
+      required: true
+      type: list
+  notes:
+
+EXAMPLES: |
+  _first, _last = item | bodsch.email.postfix_map_data
+
+RETURN:
+  _value: TBD

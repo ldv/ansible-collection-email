@@ -1,0 +1,25 @@
+
+DOCUMENTATION:
+  name: config_value
+  author: Bodo Schulz (@bodsch)
+  version_added: 1.0.0
+  short_description: TBD
+  description:
+    - TBD
+  positional: _input
+  options:
+    _input:
+      description: TBD
+      required: true
+      type: dict
+    default:
+      description: TBD
+      required: false
+      type: bool
+      defaul: None
+  notes:
+
+EXAMPLES: |
+
+RETURN:
+  _value: TBD

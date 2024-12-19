@@ -297,7 +297,7 @@ mail_attachment_fs            = {{ dovecot_mail.mail_attachment_fs }}
       dovecot_mail.mail_attachment_hash | string | length > 0 %}
   {% if dovecot_mail.mail_attachment_hash.startswith("%{") %}
     {% set _attr = ['%{md4}', '%{md5}', '%{sha1}', '%{sha256}', '%{sha512}', '%{size}'] %}
-    {% if dovecot_mail.mail_attachment_hash | validate_attachment_hash(_attr) %}
+    {% if dovecot_mail.mail_attachment_hash | bodsch.email.validate_attachment_hash(_attr) %}
       {% set _mail_attachment_hash = dovecot_mail.mail_attachment_hash %}
     {% endif %}
   {% else %}

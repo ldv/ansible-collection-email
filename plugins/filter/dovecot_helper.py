@@ -15,17 +15,9 @@ class FilterModule(object):
 
     def filters(self):
         return {
-            # 'type': self.var_type,
             'config_value': self.config_value,
-            # 'config_bool': self.config_bool,
             'database_connection': self.database_connection,
         }
-
-    def var_type(self, var):
-        """
-          Get the type of a variable
-        """
-        return type(var).__name__
 
     def config_value(self, data, default=None):
         """
@@ -47,7 +39,7 @@ class FilterModule(object):
     def database_connection(self, data):
         """
         """
-        display.v(f"database_connection({data})")
+        # display.v(f"database_connection({data})")
 
         result = ""
 
@@ -72,5 +64,5 @@ class FilterModule(object):
 
             result = " ".join(_dba_connect)
 
-        display.v(f"return : {result}")
+        # display.v(f"return : {result}")
         return result

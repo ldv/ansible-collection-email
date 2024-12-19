@@ -1,0 +1,24 @@
+
+DOCUMENTATION:
+  name: validate_attachment_hash
+  author: Bodo Schulz (@bodsch)
+  version_added: 1.0.0
+  short_description: TBD
+  description:
+    - TBD
+  positional: _input
+  options:
+    _input:
+      description: TBD
+      required: true
+      type: dict
+    compare_to_list:
+      description: TBD
+      required: true
+      type: list
+  notes:
+
+EXAMPLES: |
+
+RETURN:
+  _value: TBD

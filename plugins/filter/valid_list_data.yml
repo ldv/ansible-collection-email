@@ -1,0 +1,26 @@
+
+DOCUMENTATION:
+  name: valid_list_data
+  author: Bodo Schulz (@bodsch)
+  version_added: 1.0.0
+  short_description: TBD
+  description:
+    - TBD
+  positional: _input
+  options:
+    _input:
+      description: TBD
+      required: true
+      type: dict
+    valid_entries:
+      description: TBD
+      required: true
+      type: dict
+  notes:
+
+EXAMPLES: |
+  security_options = postfix_smtpd.sasl.security_options | bodsch.email.valid_list_data(valid_security_options)
+
+
+RETURN:
+  _value: TBD
