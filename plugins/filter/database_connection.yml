@@ -14,7 +14,8 @@ DOCUMENTATION:
       required: true
   notes:
 
-EXAMPLES: |
+EXAMPLES: TBD
 
 RETURN:
-  _value: TBD
+  _value:
+    description: TBD

@@ -27,4 +27,5 @@ EXAMPLES: |
   data = r | bodsch.email.relay_data(sasl_data, mxlookup)
 
 RETURN:
-  _value: TBD
+  _value:
+    description: TBD

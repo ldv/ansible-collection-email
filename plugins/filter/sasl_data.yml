@@ -23,4 +23,5 @@ EXAMPLES: |
   data = u | bodsch.email.sasl_data(mxlookup)
 
 RETURN:
-  _value: TBD
+  _value:
+    description: TBD

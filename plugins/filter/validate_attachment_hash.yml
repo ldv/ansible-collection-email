@@ -18,7 +18,8 @@ DOCUMENTATION:
       type: list
   notes:
 
-EXAMPLES: |
+EXAMPLES: TBD
 
 RETURN:
-  _value: TBD
+  _value:
+    description: TBD

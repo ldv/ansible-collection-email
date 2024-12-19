@@ -18,4 +18,5 @@ EXAMPLES: |
   _first, _last = item | bodsch.email.postfix_map_data
 
 RETURN:
-  _value: TBD
+  _value:
+    description: TBD
