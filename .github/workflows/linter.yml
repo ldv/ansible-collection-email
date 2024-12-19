@@ -37,7 +37,7 @@ on:
       - '.config/pycodestyle.cfg'
 
 jobs:
-  pep8:
+  pycodestyle:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -65,4 +65,4 @@ jobs:
 
       - name: Lint code.
         run: |
-          pycodestyle plugins/ --config=.config/pycodestyle.cfg --statistics --count
+          pycodestyle plugins/ --config=.config/pycodestyle.cfg --statistics --count --exclude=test_*.py .
