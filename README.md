@@ -1,14 +1,42 @@
 # Ansible Collection - bodsch.email
 
+Documentation for the collection.
 
-This collection aims to provide a set of small Ansible modules and helper functions.
+## Roles
 
-## Included content
+| Role                                                       | Build State | Description |
+|:---------------------------------------------------------- | :---- | :---- |
+| [bodsch.email.postfix](./roles/postfix/README.md)           | [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bodsch/ansible-collection-email/postfix.yml?branch=main)][postfix]        | This role will fully configure and install *postfix*. |
+| [bodsch.email.dovecot](./roles/dovecot/README.md)           | [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bodsch/ansible-collection-email/dovecot.yml?branch=main)][dovecot]        | This role will fully configure and install *dovecot*. |
 
-### Modules
 
-| Name                      | Description |
-|:--------------------------|:----|
+
+[postfix]: https://github.com/bodsch/ansible-collection-email/actions/workflows/postfix.yml
+[dovecot]: https://github.com/bodsch/ansible-collection-email/actions/workflows/dovecot.yml
+
+## Modules
+
+| Name  | Description |
+| :---- | :----       |
+| `postfix_check`            |    |
+| `postfix_maps`             |    |
+| `postfix_newaliases`       |    |
+| `postfix_postconf`         |    |
+| `postfix_postmap`          |    |
+| `postfix_validate_certs`   |    |
+| `postfix_virtual_backends` |    |
+
+## Filters
+
+| Name  | Description |
+| :---- | :----       |
+| `config_value`               |    |
+| `database_connection`        |    |
+| `postfix_map_data`           |    |
+| `relay_data`                 |    |
+| `sasl_data`                  |    |
+| `validate_attachment_hash`   |    |
+| `valid_list_data`            |    |
 
 
 ## Installing this collection
