@@ -23,4 +23,15 @@
     follow: false
   when:
     - not running_in_check_mode
+
+- name: copy tls certificates
+  become: true
+  bodsch.email.mailcow_tls_certificates:
+    source:
+      ssl_cert: "{{ mailcow_tls_certificate.source_files.cert | default(omit) }}"
+      ssl_key: "{{ mailcow_tls_certificate.source_files.key | default(omit) }}"
+      ssl_ca: "{{ mailcow_tls_certificate.source_files.ca | default(omit) }}"
+      ssl_dh: "{{ mailcow_tls_certificate.source_files.dh | default(omit) }}"
+    destination: "{{ mailcow_install_path }}/active/data/assets/ssl/"
+
 ...

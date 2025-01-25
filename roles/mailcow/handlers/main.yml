@@ -37,3 +37,5 @@
     - mailcow_valid_config is defined
     - mailcow_valid_config.rc is defined
     - mailcow_valid_config.rc == 0
+    - mailcow_service.state | default('started') == "started"
+    # enabled: "{{ mailcow_service.enabled | default('true') | bool }}"

@@ -23,6 +23,13 @@ mailcow_config:
     command: docker compose     # ['docker compose' or 'docker-compose']
   log_lines: 99
 
+mailcow_tls_certificate:
+  source_files:
+    cert: ""
+    ca: ""
+    dh: ""
+    key: ""
+
 mailcow_database:
   schema_name: mailcow
   username: mailcow
@@ -54,7 +61,7 @@ mailcow_bindings:
   imaps:
     address: ""
     port: 993
-  pop:
+  "pop":
     address: ""
     port: 110
   pops:
