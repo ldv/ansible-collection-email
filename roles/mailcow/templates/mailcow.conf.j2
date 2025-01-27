@@ -171,43 +171,47 @@ FTS_PROCS={{ mailcow_fts.procs }}
 # Allow admins to log into SOGo as email user (without any password)
 ALLOW_ADMIN_EMAIL_LOGIN=n
 
-{% if mailcow_watchdog.enabled | default('true') %}
 # Enable watchdog (watchdog-mailcow) to restart unhealthy containers
 USE_WATCHDOG={{ mailcow_watchdog.enabled | bodsch.core.config_bool(true_as='y', false_as='n') }}
-  {% if mailcow_watchdog.notify.emails is defined and
-        mailcow_watchdog.notify.emails | count > 0 %}
 # Send watchdog notifications by mail (sent from watchdog@MAILCOW_HOSTNAME)
 # CAUTION:
 # 1. You should use external recipients
 # 2. Mails are sent unsigned (no DKIM)
 # 3. If you use DMARC, create a separate DMARC policy ("v=DMARC1; p=none;" in _dmarc.MAILCOW_HOSTNAME)
 # Multiple rcpts allowed, NO quotation marks, NO spaces
-#WATCHDOG_NOTIFY_EMAIL=a@example.com,b@example.com,c@example.com
+{% if mailcow_watchdog.notify.emails is defined and
+      mailcow_watchdog.notify.emails | count > 0 %}
 WATCHDOG_NOTIFY_EMAIL={{ mailcow_watchdog.notify.emails | join(',') }}
-  {% endif %}
-  {% if mailcow_watchdog.notify.webhook is defined and
-        mailcow_watchdog.notify.webhook | string | length > 0 %}
+{% else %}
+#WATCHDOG_NOTIFY_EMAIL=a@example.com,b@example.com,c@example.com
+{% endif %}
+{% if mailcow_watchdog.notify.webhook is defined and
+      mailcow_watchdog.notify.webhook | string | length > 0 %}
 # Send notifications to a webhook URL that receives a POST request with the content type "application/json".
 # You can use this to send notifications to services like Discord, Slack and others.
-#WATCHDOG_NOTIFY_WEBHOOK=https://discord.com/api/webhooks/XXXXXXXXXXXXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 WATCHDOG_NOTIFY_WEBHOOK={{ mailcow_watchdog.notify.webhook }}
-    {% if mailcow_watchdog.notify.webhook_body is defined and
-          mailcow_watchdog.notify.webhook_body | string | length > 0 %}
+{% else %}
+#WATCHDOG_NOTIFY_WEBHOOK=https://discord.com/api/webhooks/XXXXXXXXXXXXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+{% endif %}
+{% if mailcow_watchdog.notify.webhook_body is defined and
+      mailcow_watchdog.notify.webhook_body | string | length > 0 %}
 # JSON body included in the webhook POST request. Needs to be in single quotes.
 # Following variables are available: SUBJECT, BODY
-#WATCHDOG_NOTIFY_WEBHOOK_BODY='{"username": "mailcow Watchdog", "content": "****\n"}'
 WATCHDOG_NOTIFY_WEBHOOK_BODY='{{ mailcow_watchdog.notify.webhook_body }}'
-    {% endif %}
-  {% endif %}
+{% else %}
+#WATCHDOG_NOTIFY_WEBHOOK_BODY='{"username": "mailcow Watchdog", "content": "****\n"}'
+{% endif %}
 # Notify about banned IP (includes whois lookup)
 WATCHDOG_NOTIFY_BAN={{ mailcow_watchdog.notify.ban | default('true') | bodsch.core.config_bool(true_as='y', false_as='n') }}
 # Send a notification when the watchdog is started.
 WATCHDOG_NOTIFY_START={{ mailcow_watchdog.notify.start | default('false') | bodsch.core.config_bool(true_as='y', false_as='n') }}
-  {% if mailcow_watchdog.subject is defined and
-        mailcow_watchdog.subject | string | length > 0 %}
+{% if mailcow_watchdog.subject is defined and
+      mailcow_watchdog.subject | string | length > 0 %}
 # Subject for watchdog mails. Defaults to "Watchdog ALERT" followed by the error message.
 WATCHDOG_SUBJECT={{ mailcow_watchdog.subject }}
-  {% endif %}
+{% else %}
+#WATCHDOG_SUBJECT=
+{% endif %}
 # Checks if mailcow is an open relay. Requires a SAL. More checks will follow.
 # https://www.servercow.de/mailcow?lang=en
 # https://www.servercow.de/mailcow?lang=de
@@ -216,7 +220,6 @@ WATCHDOG_SUBJECT={{ mailcow_watchdog.subject }}
 WATCHDOG_EXTERNAL_CHECKS={{ mailcow_watchdog.external_checks | default('false') | bodsch.core.config_bool(true_as='y', false_as='n') }}
 # Enable watchdog verbose logging
 WATCHDOG_VERBOSE={{ mailcow_watchdog.verbose | default('false') | bodsch.core.config_bool(true_as='y', false_as='n') }}
-{% endif %}
 
 # Max log lines per service to keep in Redis logs
 LOG_LINES={{ mailcow_config.log_lines | default('99') }}
@@ -232,14 +235,15 @@ IPV6_NETWORK={{ mailcow_network.ipv6 }}
 {% if mailcow_snat.ipv4.to_source | default('') | string | length > 0 %}
 # Use this IPv4 for outgoing connections (SNAT)
 SNAT_TO_SOURCE={{ mailcow_snat.ipv4.to_source }}
+{% else %}
+#SNAT_TO_SOURCE=
 {% endif %}
 {% if mailcow_snat.ipv6.to_source | default('') | string | length > 0 %}
 # Use this IPv6 for outgoing connections (SNAT)
 SNAT6_TO_SOURCE={{ mailcow_snat.ipv6.to_source }}
+{% else %}
+#SNAT6_TO_SOURCE=
 {% endif %}
-{% if mailcow_api is defined and
-      mailcow_api.key is defined and
-      mailcow_api.key | string | length > 0 %}
 
 # Create or override an API key for the web UI
 # You _must_ define API_ALLOW_FROM, which is a comma separated list of IPs
@@ -249,8 +253,7 @@ SNAT6_TO_SOURCE={{ mailcow_snat.ipv6.to_source }}
 # You can define API_KEY and/or API_KEY_READ_ONLY
 API_KEY={{ mailcow_api.key }}
 API_KEY_READ_ONLY={{ mailcow_api.read_only | default([]) | join(',') }}
-API_ALLOW_FROM={{ mailcow_api.allow_from | default([]) | join(',') }} # 172.22.1.1,127.0.0.1
-{% endif %}
+API_ALLOW_FROM={{ mailcow_api.allow_from | default([]) | join(',') }}
 
 # mail_home is ~/Maildir
 MAILDIR_SUB={{ mailcow_maildir.home }}
