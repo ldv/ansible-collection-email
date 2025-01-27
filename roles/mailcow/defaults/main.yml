@@ -89,6 +89,11 @@ mailcow_additional_server_names: []
 mailcow_lets_encrypt:
   enable: false
 
+mailcow_api:
+  allow_from: []
+  read_only: []
+  key: ""
+
 mailcow_sni:
   enable: true
 
@@ -103,5 +108,7 @@ mailcow_watchdog:
   subject: ""
   external_checks: false
   verbose: false
+
+mailcow_maildir: "Maildir"
 
 ...

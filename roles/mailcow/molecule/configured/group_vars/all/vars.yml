@@ -1,0 +1,53 @@
+---
+
+mailcow_bindings:
+  http:
+    address: "127.0.0.1"
+    port: 8080
+  https:
+    address: "127.0.0.1"
+    port: 8443
+  smtp:
+    address: ""
+    port: 25
+  smtps:
+    address: ""
+    port: 465
+  submission:
+    address: ""
+    port: 587
+  imap:
+    address: ""
+    port: 143
+  imaps:
+    address: ""
+    port: 993
+  "pop":
+    address: ""
+    port: 110
+  pops:
+    address: ""
+    port: 995
+  sieve:
+    address: ""
+    port: 4190
+  doveadm:
+    address: 127.0.0.1
+    port: 19991
+  database:
+    address: 127.0.0.1
+    port: 13306
+  redis:
+    address: 127.0.0.1
+    port: 7654
+
+mailcow_api:
+  allow_from:
+    - "127.0.0.1"
+    - "172.22.1."
+  read_only: []
+  key: "Npf5tufGC1r5Gx18d28wV6t7VM1wi6"
+
+mailcow_maildir: ""
+
+...

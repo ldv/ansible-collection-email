@@ -73,7 +73,7 @@ SMTPS_PORT={{ mailcow_bindings.smtps | bodsch.email.mailcow_ports() }}
 SUBMISSION_PORT={{ mailcow_bindings.submission | bodsch.email.mailcow_ports() }}
 IMAP_PORT={{ mailcow_bindings.imap | bodsch.email.mailcow_ports() }}
 IMAPS_PORT={{ mailcow_bindings.imaps | bodsch.email.mailcow_ports() }}
-POP_PORT={{ mailcow_bindings.pop | bodsch.email.mailcow_ports() }}
+POP_PORT={{ mailcow_bindings.get("pop") | bodsch.email.mailcow_ports() }}
 POPS_PORT={{ mailcow_bindings.pops | bodsch.email.mailcow_ports() }}
 SIEVE_PORT={{ mailcow_bindings.sieve | bodsch.email.mailcow_ports() }}
 DOVEADM_PORT={{ mailcow_bindings.doveadm | bodsch.email.mailcow_ports() }}
@@ -268,19 +268,22 @@ IPV6_NETWORK=fd4d:6169:6c63:6f77::/64
 
 #SNAT6_TO_SOURCE=
 
+{% if mailcow_api is defined and
+      mailcow_api.key is defined and
+      mailcow_api.key | string | length > 0 %}
 # Create or override an API key for the web UI
 # You _must_ define API_ALLOW_FROM, which is a comma separated list of IPs
 # An API key defined as API_KEY has read-write access
 # An API key defined as API_KEY_READ_ONLY has read-only access
 # Allowed chars for API_KEY and API_KEY_READ_ONLY: a-z, A-Z, 0-9, -
 # You can define API_KEY and/or API_KEY_READ_ONLY
-
-#API_KEY=
-#API_KEY_READ_ONLY=
-#API_ALLOW_FROM=172.22.1.1,127.0.0.1
+API_KEY={{ mailcow_api.key }}
+API_KEY_READ_ONLY={{ mailcow_api.read_only | default([]) | join(',') }}
+API_ALLOW_FROM={{ mailcow_api.allow_from | default([]) | join(',') }} # 172.22.1.1,127.0.0.1
+{% endif %}
 
 # mail_home is ~/Maildir
-MAILDIR_SUB=Maildir
+MAILDIR_SUB={{ mailcow_maildir }}
 
 # SOGo session timeout in minutes
 SOGO_EXPIRE_SESSION=480
