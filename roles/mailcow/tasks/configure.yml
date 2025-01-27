@@ -1,5 +1,31 @@
 ---
 
+- name: merge mailcow configuration between defaults and custom
+  ansible.builtin.set_fact:
+    mailcow_config: "{{ mailcow_default_config | combine(mailcow_config, recursive=True) }}"
+    mailcow_tls_certificate: "{{ mailcow_default_tls_certificate | combine(mailcow_tls_certificate, recursive=True) }}"
+    mailcow_database: "{{ mailcow_default_database | combine(mailcow_database, recursive=True) }}"
+    mailcow_redis: "{{ mailcow_default_redis | combine(mailcow_redis, recursive=True) }}"
+    mailcow_bindings: "{{ mailcow_default_bindings | combine(mailcow_bindings, recursive=True) }}"
+    mailcow_san: "{{ mailcow_default_san | combine(mailcow_san, recursive=True) }}"
+    # mailcow_additional_server_names: "{{ php_fpm_defaults_global | combine(mailcow_config, recursive=True) }}"
+    mailcow_lets_encrypt: "{{ mailcow_default_lets_encrypt | combine(mailcow_lets_encrypt, recursive=True) }}"
+    mailcow_api: "{{ mailcow_default_api | combine(mailcow_api, recursive=True) }}"
+    mailcow_sni: "{{ mailcow_default_sni | combine(mailcow_sni, recursive=True) }}"
+    mailcow_ip_check: "{{ mailcow_default_ip_check | combine(mailcow_ip_check, recursive=True) }}"
+    mailcow_http_verification: "{{ mailcow_default_http_verification | combine(mailcow_http_verification, recursive=True) }}"
+    mailcow_unbound_healthcheck: "{{ mailcow_default_unbound_healthcheck | combine(mailcow_unbound_healthcheck, recursive=True) }}"
+    mailcow_clamd: "{{ mailcow_default_clamd | combine(mailcow_clamd, recursive=True) }}"
+    mailcow_sogo: "{{ mailcow_default_sogo | combine(mailcow_sogo, recursive=True) }}"
+    mailcow_fts: "{{ mailcow_default_fts | combine(mailcow_fts, recursive=True) }}"
+    mailcow_network: "{{ mailcow_default_network | combine(mailcow_network, recursive=True) }}"
+    mailcow_snat: "{{ mailcow_default_snat | combine(mailcow_snat, recursive=True) }}"
+    mailcow_dovecot: "{{ mailcow_default_dovecot | combine(mailcow_dovecot, recursive=True) }}"
+    mailcow_acme: "{{ mailcow_default_acme | combine(mailcow_acme, recursive=True) }}"
+    mailcow_spamhaus: "{{ mailcow_default_spamhaus | combine(mailcow_spamhaus, recursive=True) }}"
+    mailcow_watchdog: "{{ mailcow_default_watchdog | combine(mailcow_watchdog, recursive=True) }}"
+    mailcow_maildir: "{{ mailcow_default_maildir | combine(mailcow_maildir, recursive=True) }}"
+
 - name: create mailcow.conf
   ansible.builtin.template:
     force: true

@@ -69,6 +69,10 @@
       ansible.builtin.fail:
         msg: A serious error occurred during the installation of the binary.
 
+- name: merge mailcow configuration between defaults and custom
+  ansible.builtin.set_fact:
+    mailcow_config: "{{ mailcow_default_config | combine(mailcow_config, recursive=True) }}"
+
 - name: systemd
   when:
     - ansible_service_mgr | lower == "systemd"

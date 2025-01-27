@@ -6,8 +6,149 @@ mailcow_local_tmp_directory: "{{
   lookup('env', 'CUSTOM_LOCAL_TMP_DIRECTORY') |
   default(lookup('env', 'HOME') ~ '/.cache/ansible/mailcow', true) }}" # "/{{ mailcow_version }}"
 
-# mailcow_download: false
-# mailcow_download_directory: "/tmp/mailcow/mailcow-{{ mailcow_version }}"
+# ---------------------------------------------------------------------------------------
+
+mailcow_default_config:
+  hostname: "{{ inventory_hostname }}"
+  password_scheme: BLF-CRYPT
+  timezone: UTC
+  compose:
+    project_name: mailcow
+    command: docker compose     # ['docker compose' or 'docker-compose']
+  log_lines: 9999
+
+mailcow_default_tls_certificate:
+  source_files:
+    cert: "{{ mailcow_install_path }}/{{ mailcow_version }}/data/assets/ssl-example/cert.pem"
+    ca: ""
+    dh: "{{ mailcow_install_path }}/{{ mailcow_version }}/data/assets/ssl-example/dhparams.pem"
+    key: "{{ mailcow_install_path }}/{{ mailcow_version }}/data/assets/ssl-example/key.pem"
+
+mailcow_default_database:
+  schema_name: mailcow
+  username: mailcow
+  password: mailcow
+  root_password: mailcow_root
+
+mailcow_default_redis:
+  password: redis
+
+mailcow_default_bindings:
+  http:
+    address: ""
+    port: 80
+  https:
+    address: ""
+    port: 443
+  smtp:
+    address: ""
+    port: 25
+  smtps:
+    address: ""
+    port: 465
+  submission:
+    address: ""
+    port: 587
+  imap:
+    address: ""
+    port: 143
+  imaps:
+    address: ""
+    port: 993
+  "pop":
+    address: ""
+    port: 110
+  pops:
+    address: ""
+    port: 995
+  sieve:
+    address: ""
+    port: 4190
+  doveadm:
+    address: 127.0.0.1
+    port: 19991
+  database:
+    address: 127.0.0.1
+    port: 13306
+  redis:
+    address: 127.0.0.1
+    port: 7654
+
+mailcow_default_san:
+  additional_sans: []
+  autodiscover: false
+
+mailcow_default_additional_server_names: []
+
+mailcow_default_lets_encrypt:
+  enabled: false
+
+mailcow_default_api:
+  allow_from: []
+  read_only: []
+  key: ""
+
+mailcow_default_sni:
+  enabled: true
+
+mailcow_default_ip_check:
+  enabled: true
+
+mailcow_default_http_verification:
+  enabled: false
+
+mailcow_default_unbound_healthcheck:
+  enabled: true
+
+mailcow_default_clamd:
+  enabled: true
+
+mailcow_default_sogo:
+  enabled: false
+  expire_session: 480
+
+mailcow_default_fts:
+  enabled: true
+  heap_memory: 128  # MiB
+  procs: 1
+
+mailcow_default_network:
+  ipv4: "172.22.1"
+  ipv6: "fd4d:6169:6c63:6f77::/64"
+
+mailcow_default_snat:
+  ipv4:
+    to_source: ""
+  ipv6:
+    to_source: ""
+
+mailcow_default_dovecot:
+  master_user: ""
+  master_pass: ""
+
+mailcow_default_acme:
+  contact: ""
+
+mailcow_default_spamhaus:
+  dqs_key: ""
+
+mailcow_default_watchdog:
+  enabled: true
+  notify:
+    emails: []
+    webhook: ""
+    webhook_body: ""
+    ban: false
+    start: true
+  subject: ""
+  external_checks: false
+  verbose: false
+
+mailcow_default_maildir:
+  home: "Maildir"
+  gc_time: 60
+
+# ---------------------------------------------------------------------------------------
 
 systemd_lib_directory: /lib/systemd/system
 

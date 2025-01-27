@@ -97,68 +97,62 @@ def get_vars(host):
     return result
 
 
-@pytest.mark.parametrize("dirs", [
-    "/etc/dovecot",
-    "/etc/dovecot/auth.d",
-    "/etc/dovecot/conf.d",
-    "/etc/dovecot/sql.d",
-    "/var/log/dovecot"
-])
-def test_directories(host, dirs):
-    d = host.file(dirs)
-    assert d.is_directory
+def local_facts(host):
+    """
+      return local facts
+    """
+    local_fact = host.ansible("setup").get("ansible_facts").get("ansible_local")
+
+    print(f"local_fact     : {local_fact}")
+
+    if local_fact:
+        return local_fact.get("mailcow", {})
+    else:
+        return dict()
 
 
-@pytest.mark.parametrize("files", [
-    "/etc/dovecot/dovecot.conf",
-    "/etc/dovecot/dovecot-dict-auth.conf.ext",
-    "/etc/dovecot/dovecot-dict-sql.conf.ext",
-    "/etc/dovecot/dovecot-ldap.conf.ext",
-    "/etc/dovecot/dovecot-sql.conf.ext",
-    "/etc/dovecot/conf.d/10-auth.conf",
-    "/etc/dovecot/conf.d/10-director.conf",
-    "/etc/dovecot/conf.d/10-logging.conf",
-    "/etc/dovecot/conf.d/10-mail.conf",
-    "/etc/dovecot/conf.d/10-master.conf",
-    "/etc/dovecot/conf.d/10-ssl.conf",
-    "/etc/dovecot/conf.d/10-tcpwrapper.conf",
-    "/etc/dovecot/conf.d/15-lda.conf",
-    "/etc/dovecot/conf.d/15-mailboxes.conf",
-    "/etc/dovecot/conf.d/20-imap.conf",
-    "/etc/dovecot/conf.d/20-lmtp.conf",
-    "/etc/dovecot/conf.d/20-managesieve.conf",
-    "/etc/dovecot/conf.d/20-pop3.conf",
-    "/etc/dovecot/conf.d/20-submission.conf",
-    "/etc/dovecot/conf.d/90-acl.conf",
-    "/etc/dovecot/conf.d/90-plugin.conf",
-    "/etc/dovecot/conf.d/90-quota.conf",
-    "/etc/dovecot/conf.d/90-sieve-extprograms.conf",
-    "/etc/dovecot/conf.d/90-sieve.conf",
-    "/etc/dovecot/auth.d/auth-checkpassword.conf.ext",
-    "/etc/dovecot/auth.d/auth-deny.conf.ext",
-    "/etc/dovecot/auth.d/auth-dict.conf.ext",
-    "/etc/dovecot/auth.d/auth-ldap.conf.ext",
-    "/etc/dovecot/auth.d/auth-master.conf.ext",
-    "/etc/dovecot/auth.d/auth-passwdfile.conf.ext",
-    "/etc/dovecot/auth.d/auth-sql.conf.ext",
-    "/etc/dovecot/auth.d/auth-static.conf.ext",
-    "/etc/dovecot/auth.d/auth-system.conf.ext",
-    "/etc/dovecot/auth.d/auth-vpopmail.conf.ext",
-])
-def test_files(host, files):
-    f = host.file(files)
-    assert f.is_file
+def test_directories(host, get_vars):
+
+    install_path = get_vars.get("mailcow_install_path")
+
+    directories = [
+        f"{install_path}/active/data",
+        f"{install_path}/active/data/assets/ssl"
+    ]
+
+    for dirs in directories:
+        d = host.file(dirs)
+        assert d.is_directory
+
+
+def test_files(host, get_vars):
+
+    install_path = get_vars.get("mailcow_install_path")
+
+    files = [
+        f"{install_path}/active/docker-compose.yml",
+        f"{install_path}/active/mailcow.conf",
+        f"{install_path}/active/.env"
+        ]
+
+    for f in files:
+        d = host.file(f)
+        assert d.is_file
 
 
 def test_service_running_and_enabled(host, get_vars):
     """
       running service
     """
-    service_name = "dovecot"
+    service_name = "mailcow"
+
+    mailcow_service = get_vars.get("mailcow_service")
 
     service = host.service(service_name)
-    assert service.is_running
-    assert service.is_enabled
+    if mailcow_service.get("state") == "started":
+        assert service.is_running
+    if mailcow_service.get("enabled") == "true":
+        assert service.is_enabled
 
 
 def test_listening_socket(host, get_vars):
@@ -169,12 +163,16 @@ def test_listening_socket(host, get_vars):
     for i in listening:
         print(i)
 
-    listen = []
-    listen.append("tcp://0.0.0.0:110")
-    listen.append("tcp://0.0.0.0:143")
-    listen.append("tcp://0.0.0.0:993")
-    listen.append("tcp://0.0.0.0:995")
+    listen = [
+        "tcp://0.0.0.0:110",
+        "tcp://0.0.0.0:143",
+        "tcp://0.0.0.0:993",
+        "tcp://0.0.0.0:995",
+    ]
+
+    mailcow_service = get_vars.get("mailcow_service")
 
     for spec in listen:
         socket = host.socket(spec)
-        assert socket.is_listening
+        if mailcow_service.get("state") == "started":
+            assert socket.is_listening

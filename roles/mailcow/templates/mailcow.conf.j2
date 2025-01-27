@@ -44,51 +44,36 @@ REDISPASS={{ mailcow_redis.password }}
 # Example: HTTP_BIND=1.2.3.4
 # For IPv4 leave it as it is: HTTP_BIND= & HTTPS_PORT=
 # For IPv6 see https://docs.mailcow.email/post_installation/firststeps-ip_bindings/
-{% set _http_bind = '' %}
-{% set _https_bind = '' %}
-{% if mailcow_bindings.http.address is defined and
-      mailcow_bindings.http.address | string | length > 0 and
-      mailcow_bindings.http.address | ansible.utils.ipaddr %}
-  {% set _http_bind = mailcow_bindings.http.address %}
-{% endif %}
-{% if mailcow_bindings.https.address is defined and
-      mailcow_bindings.https.address | string | length > 0 and
-      mailcow_bindings.https.address | ansible.utils.ipaddr %}
-  {% set _https_bind = mailcow_bindings.https.address %}
-{% endif %}
-HTTP_PORT={{ mailcow_bindings.http.port }}
-HTTP_BIND={{ _http_bind }}
+HTTP_PORT={{ mailcow_bindings.get("http", {"address":"","port":"80"}).get("port", "80") }}
+HTTP_BIND={{ mailcow_bindings.get("http", {"address":"","port":"80"}).get("address", "") }}
 
-HTTPS_PORT={{ mailcow_bindings.https.port }}
-HTTPS_BIND={{ _https_bind }}
+HTTPS_PORT={{ mailcow_bindings.get("https", {"address":"","port":"443"}).get("port", "443") }}
+HTTPS_BIND={{ mailcow_bindings.get("https", {"address":"","port":"443"}).get("address", "") }}
 
 # ------------------------------
 # Other bindings
 # ------------------------------
 # You should leave that alone
 # Format: 11.22.33.44:25 or 12.34.56.78:465 etc.
-
-SMTP_PORT={{ mailcow_bindings.smtp | bodsch.email.mailcow_ports() }}
-SMTPS_PORT={{ mailcow_bindings.smtps | bodsch.email.mailcow_ports() }}
-SUBMISSION_PORT={{ mailcow_bindings.submission | bodsch.email.mailcow_ports() }}
-IMAP_PORT={{ mailcow_bindings.imap | bodsch.email.mailcow_ports() }}
-IMAPS_PORT={{ mailcow_bindings.imaps | bodsch.email.mailcow_ports() }}
-POP_PORT={{ mailcow_bindings.get("pop") | bodsch.email.mailcow_ports() }}
-POPS_PORT={{ mailcow_bindings.pops | bodsch.email.mailcow_ports() }}
-SIEVE_PORT={{ mailcow_bindings.sieve | bodsch.email.mailcow_ports() }}
-DOVEADM_PORT={{ mailcow_bindings.doveadm | bodsch.email.mailcow_ports() }}
-SQL_PORT={{ mailcow_bindings.database | bodsch.email.mailcow_ports() }}
-REDIS_PORT={{ mailcow_bindings.redis | bodsch.email.mailcow_ports() }}
+SMTP_PORT={{ mailcow_bindings.get("smtp", {"address":"","port":"25"}) | bodsch.email.mailcow_ports() }}
+SMTPS_PORT={{ mailcow_bindings.get("smtps", {"address":"","port":"465"}) | bodsch.email.mailcow_ports() }}
+SUBMISSION_PORT={{ mailcow_bindings.get("submission", {"address":"","port":"587"}) | bodsch.email.mailcow_ports() }}
+IMAP_PORT={{ mailcow_bindings.get("imap", {"address":"","port":"143"}) | bodsch.email.mailcow_ports() }}
+IMAPS_PORT={{ mailcow_bindings.get("imaps", {"address":"","port":"993"}) | bodsch.email.mailcow_ports() }}
+POP_PORT={{ mailcow_bindings.get("pop", {"address":"","port":"110"}) | bodsch.email.mailcow_ports() }}
+POPS_PORT={{ mailcow_bindings.get("pops", {"address":"","port":"995"}) | bodsch.email.mailcow_ports() }}
+SIEVE_PORT={{ mailcow_bindings.get("sieve", {"address":"","port":"4190"}) | bodsch.email.mailcow_ports() }}
+DOVEADM_PORT={{ mailcow_bindings.get("doveadm", {"address":"127.0.0.1","port":"19991"}) | bodsch.email.mailcow_ports() }}
+SQL_PORT={{ mailcow_bindings.get("database", {"address":"127.0.0.1","port":"13306"}) | bodsch.email.mailcow_ports() }}
+REDIS_PORT={{ mailcow_bindings.get("redis", {"address":"127.0.0.1","port":"7654"}) | bodsch.email.mailcow_ports() }}
 
 # Your timezone
 # See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of timezones
 # Use the column named 'TZ identifier' + pay attention for the column named 'Notes'
-
 TZ={{ mailcow_config.timezone }}
 
 # Fixed project name
 # Please use lowercase letters only
-
 COMPOSE_PROJECT_NAME={{ mailcow_config.compose.project_name }}
 
 # Used Docker Compose version
@@ -113,7 +98,7 @@ ACL_ANYONE=disallow
 # How long should objects remain in the garbage until they are being deleted? (value in minutes)
 # Check interval is hourly
 
-MAILDIR_GC_TIME=60
+MAILDIR_GC_TIME={{ mailcow_maildir.gc_time }}
 
 # Additional SAN for the certificate
 #
@@ -128,7 +113,6 @@ MAILDIR_GC_TIME=60
 # ...or combine wildcard and static names:
 #ADDITIONAL_SAN=imap.*,srv1.example.com
 #
-
 ADDITIONAL_SAN={{ mailcow_san.additional_sans | default([]) | join(',') }}
 
 # Obtain certificates for autodiscover.* and autoconfig.* domains.
@@ -145,62 +129,50 @@ AUTODISCOVER_SAN={{ mailcow_san.autodiscover | default('false') | bodsch.core.co
 # If the server name does not match a known site, Nginx decides by best-guess and may redirect users to the wrong web root.
 # You can understand this as server_name directive in Nginx.
 # Comma separated list without spaces! Example: ADDITIONAL_SERVER_NAMES=a.b.c,d.e.f
-
 ADDITIONAL_SERVER_NAMES={{ mailcow_additional_server_names | join(',') }}
 
 # Skip running ACME (acme-mailcow, Let's Encrypt certs) - y/n
-
-SKIP_LETS_ENCRYPT={{ mailcow_lets_encrypt.enable | bodsch.core.config_bool(true_as='n', false_as='y') }}
+SKIP_LETS_ENCRYPT={{ mailcow_lets_encrypt.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Create seperate certificates for all domains - y/n
 # this will allow adding more than 100 domains, but some email clients will not be able to connect with alternative hostnames
 # see https://doc.dovecot.org/admin_manual/ssl/sni_support
-ENABLE_SSL_SNI={{ mailcow_sni.enable | bodsch.core.config_bool(true_as='y', false_as='n') }}
+ENABLE_SSL_SNI={{ mailcow_sni.enabled | bodsch.core.config_bool(true_as='y', false_as='n') }}
 
 # Skip IPv4 check in ACME container - y/n
-
-SKIP_IP_CHECK=y
+SKIP_IP_CHECK={{ mailcow_ip_check.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Skip HTTP verification in ACME container - y/n
-
-SKIP_HTTP_VERIFICATION=n
+SKIP_HTTP_VERIFICATION={{ mailcow_http_verification.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Skip Unbound (DNS Resolver) Healthchecks (NOT Recommended!) - y/n
-
-SKIP_UNBOUND_HEALTHCHECK=y
+SKIP_UNBOUND_HEALTHCHECK={{ mailcow_unbound_healthcheck.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Skip ClamAV (clamd-mailcow) anti-virus (Rspamd will auto-detect a missing ClamAV container) - y/n
-
-SKIP_CLAMD=n
+SKIP_CLAMD={{ mailcow_clamd.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Skip SOGo: Will disable SOGo integration and therefore webmail, DAV protocols and ActiveSync support (experimental, unsupported, not fully implemented) - y/n
-
-SKIP_SOGO=y
+SKIP_SOGO={{ mailcow_sogo.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Skip FTS (Fulltext Search) for Dovecot on low-memory, low-threaded systems or if you simply want to disable it.
 # Dovecot inside mailcow use Flatcurve as FTS Backend.
-
-SKIP_FTS=n
+SKIP_FTS={{ mailcow_fts.enabled | bodsch.core.config_bool(true_as='n', false_as='y') }}
 
 # Dovecot Indexing (FTS) Process maximum heap size in MB, there is no recommendation, please see Dovecot docs.
 # Flatcurve (Xapian backend) is used as the FTS Indexer. It is supposed to be efficient in CPU and RAM consumption.
 # However: Please always monitor your Resource consumption!
-
-FTS_HEAP=128
+FTS_HEAP={{ mailcow_fts.heap_memory }}
 
 # Controls how many processes the Dovecot indexing process can spawn at max.
 # Too many indexing processes can use a lot of CPU and Disk I/O.
 # Please visit: https://doc.dovecot.org/configuration_manual/service_configuration/#indexer-worker for more informations
-
-FTS_PROCS=1
+FTS_PROCS={{ mailcow_fts.procs }}
 
 # Allow admins to log into SOGo as email user (without any password)
-
 ALLOW_ADMIN_EMAIL_LOGIN=n
 
-# Enable watchdog (watchdog-mailcow) to restart unhealthy containers
-
 {% if mailcow_watchdog.enabled | default('true') %}
+# Enable watchdog (watchdog-mailcow) to restart unhealthy containers
 USE_WATCHDOG={{ mailcow_watchdog.enabled | bodsch.core.config_bool(true_as='y', false_as='n') }}
   {% if mailcow_watchdog.notify.emails is defined and
         mailcow_watchdog.notify.emails | count > 0 %}
@@ -247,30 +219,28 @@ WATCHDOG_VERBOSE={{ mailcow_watchdog.verbose | default('false') | bodsch.core.co
 {% endif %}
 
 # Max log lines per service to keep in Redis logs
-
 LOG_LINES={{ mailcow_config.log_lines | default('99') }}
 
 # Internal IPv4 /24 subnet, format n.n.n (expands to n.n.n.0/24)
 # Use private IPv4 addresses only, see https://en.wikipedia.org/wiki/Private_network#Private_IPv4_addresses
-
-IPV4_NETWORK=172.22.1
+IPV4_NETWORK={{ mailcow_network.ipv4 }}
 
 # Internal IPv6 subnet in fc00::/7
 # Use private IPv6 addresses only, see https://en.wikipedia.org/wiki/Private_network#Private_IPv6_addresses
+IPV6_NETWORK={{ mailcow_network.ipv6 }}
 
-IPV6_NETWORK=fd4d:6169:6c63:6f77::/64
-
+{% if mailcow_snat.ipv4.to_source | default('') | string | length > 0 %}
 # Use this IPv4 for outgoing connections (SNAT)
-
-#SNAT_TO_SOURCE=
-
+SNAT_TO_SOURCE={{ mailcow_snat.ipv4.to_source }}
+{% endif %}
+{% if mailcow_snat.ipv6.to_source | default('') | string | length > 0 %}
 # Use this IPv6 for outgoing connections (SNAT)
-
-#SNAT6_TO_SOURCE=
-
+SNAT6_TO_SOURCE={{ mailcow_snat.ipv6.to_source }}
+{% endif %}
 {% if mailcow_api is defined and
       mailcow_api.key is defined and
       mailcow_api.key | string | length > 0 %}
+
 # Create or override an API key for the web UI
 # You _must_ define API_ALLOW_FROM, which is a comma separated list of IPs
 # An API key defined as API_KEY has read-write access
@@ -283,25 +253,25 @@ API_ALLOW_FROM={{ mailcow_api.allow_from | default([]) | join(',') }} # 172.22.1
 {% endif %}
 
 # mail_home is ~/Maildir
-MAILDIR_SUB={{ mailcow_maildir }}
+MAILDIR_SUB={{ mailcow_maildir.home }}
 
 # SOGo session timeout in minutes
-SOGO_EXPIRE_SESSION=480
+SOGO_EXPIRE_SESSION={{ mailcow_sogo.expire_session }}
 
 # DOVECOT_MASTER_USER and DOVECOT_MASTER_PASS must both be provided. No special chars.
 # Empty by default to auto-generate master user and password on start.
 # User expands to DOVECOT_MASTER_USER@mailcow.local
 # LEAVE EMPTY IF UNSURE
-DOVECOT_MASTER_USER=
+DOVECOT_MASTER_USER={{ mailcow_dovecot.master_user }}
 # LEAVE EMPTY IF UNSURE
-DOVECOT_MASTER_PASS=
+DOVECOT_MASTER_PASS={{ mailcow_dovecot.master_pass }}
 
 # Let's Encrypt registration contact information
 # Optional: Leave empty for none
 # This value is only used on first order!
 # Setting it at a later point will require the following steps:
 # https://docs.mailcow.email/troubleshooting/debug-reset_tls/
-ACME_CONTACT=
+ACME_CONTACT={{ mailcow_acme.contact }}
 
 # WebAuthn device manufacturer verification
 # After setting WEBAUTHN_ONLY_TRUSTED_VENDORS=y only devices from trusted manufacturers are allowed
@@ -313,10 +283,8 @@ WEBAUTHN_ONLY_TRUSTED_VENDORS=n
 # Enter your key here if you are using a blocked ASN (OVH, AWS, Cloudflare e.g) for the unregistered Spamhaus Blocklist.
 # If empty, it will completely disable Spamhaus blocklists if it detects that you are running on a server using a blocked AS.
 # Otherwise it will work normally.
-SPAMHAUS_DQS_KEY=
+SPAMHAUS_DQS_KEY={{ mailcow_spamhaus.dqs_key }}
 
 # Prevent netfilter from setting an iptables/nftables rule to isolate the mailcow docker network - y/n
 # CAUTION: Disabling this may expose container ports to other neighbors on the same subnet, even if the ports are bound to localhost
 DISABLE_NETFILTER_ISOLATION_RULE=n
-
-
