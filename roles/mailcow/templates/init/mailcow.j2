@@ -1,0 +1,31 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# {{ ansible_managed }}
+{% set _networks =  mailcow_compose_networks | bodsch.email.mailcow_compose_active() %}
+{% set _services =  mailcow_compose_services | bodsch.email.mailcow_compose_active() %}
+{% set _volumes =  mailcow_compose_volumes | bodsch.email.mailcow_compose_active() %}
+{% set _files = _networks + _services + _volumes %}
+
+OPTIONS_CONFIG=" \
+  --env-file {{ mailcow_install_path }}/active/mailcow.conf \
+  {% if _files | count > 0 %}
+    {% for f in _files %}
+  --file {{ mailcow_install_path }}/active/docker-compose.d/{{ f }} \
+    {% endfor %}
+  {% else %}
+  --file {{ mailcow_install_path }}/active/docker-compose.yml \
+  {% endif %}
+  config \
+  --output {{ mailcow_install_path }}/active/mailcow-compose.conf
+"
+
+OPTIONS_UP=" \
+  --file {{ mailcow_install_path }}/active/mailcow-compose.conf \
+  up \
+  --detach \
+  --remove-orphans
+"
+
+OPTIONS_DOWN=" \
+  --file {{ mailcow_install_path }}/active/mailcow-compose.conf \
+  down
+"

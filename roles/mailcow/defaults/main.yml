@@ -118,9 +118,9 @@ mailcow_fts: {}
   # heap_memory: 128  # MiB
   # procs: 1
 
-mailcow_network: {}
-  # ipv4: "172.22.1"
-  # ipv6: "fd4d:6169:6c63:6f77::/64"
+mailcow_network:
+  ipv4: "172.22.1"
+  ipv6: "fd4d:6169:6c63:6f77::/64"
 
 mailcow_snat: {}
   # ipv4:
@@ -153,5 +153,11 @@ mailcow_watchdog: {}
 mailcow_maildir: {}
   # home: "Maildir"
   # gc_time: 60
+
+mailcow_compose: {}
+
+mailcow_compose_networks: []
+mailcow_compose_services: []
+mailcow_compose_volumes: []
 
 ...

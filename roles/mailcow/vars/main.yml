@@ -148,6 +148,8 @@ mailcow_default_maildir:
   home: "Maildir"
   gc_time: 60
 
+mailcow_defaults_directory: /etc/default
+
 # ---------------------------------------------------------------------------------------
 
 systemd_lib_directory: /lib/systemd/system

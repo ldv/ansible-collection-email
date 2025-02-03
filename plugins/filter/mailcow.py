@@ -16,6 +16,7 @@ class FilterModule(object):
     def filters(self):
         return {
             'mailcow_ports': self.mailcow_ports,
+            'mailcow_compose_active': self.mailcow_compose_active,
         }
 
     def mailcow_ports(self, data):
@@ -37,4 +38,11 @@ class FilterModule(object):
             else:
                 result = port
 
+        return result
+
+    def mailcow_compose_active(self, data):
+        """
+        """
+        # display.v(f"mailcow_compose_active({data})")
+        result = [f"{x.get("name")}.conf" for x in data if x.get("state", "present") == "present"]
         return result

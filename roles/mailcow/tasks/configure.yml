@@ -36,7 +36,7 @@
     mode: "0640"
   register: mailcow_config
   notify:
-    - validate config
+    - restart mailcow
   when:
     - not running_in_check_mode
 
@@ -47,6 +47,8 @@
     state: link
     force: true
     follow: false
+  notify:
+    - restart mailcow
   when:
     - not running_in_check_mode
 

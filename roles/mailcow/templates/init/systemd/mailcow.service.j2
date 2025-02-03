@@ -8,24 +8,26 @@ After                   = docker.service
 
 [Service]
 Type                    = oneshot
+EnvironmentFile         = {{ mailcow_defaults_directory }}/mailcow
+
 RemainAfterExit         = true
 WorkingDirectory        = {{ mailcow_install_path }}/active
 {% if mailcow_config.compose.command == 'docker-compose' %}
-ExecStart               = /usr/bin/docker-compose up --detach --remove-orphans
-ExecStop                = /usr/bin/docker-compose down
+ExecStart               = /usr/bin/docker-compose $OPTIONS_CONFIG
+ExecStart               = /usr/bin/docker-compose $OPTIONS_UP
+ExecStop                = /usr/bin/docker-compose $OPTIONS_DOWN
 {% else %}
-ExecStart               = /usr/bin/docker compose up --detach --remove-orphans
-ExecStop                = /usr/bin/docker compose down
+ExecStart               = /usr/bin/docker compose $OPTIONS_CONFIG
+ExecStart               = /usr/bin/docker compose $OPTIONS_UP
+ExecStop                = /usr/bin/docker compose $OPTIONS_DOWN
 {% endif %}
 
 PrivateTmp              = yes
 UMask                   = 077
 NoNewPrivileges         = yes
-## NotifyAccess            = yes
 PrivateMounts           = yes
 ProtectControlGroups    = yes
 ProtectKernelTunables   = yes
-## ProtectProc             = yes
 ProtectHome             = true
 ProtectSystem           = full
 RestrictAddressFamilies = AF_UNIX AF_INET AF_INET6

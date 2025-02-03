@@ -86,7 +86,14 @@ class MailcowTLSCerts(object):
         result = self.create_destination_directory()
 
         if not result.get('failed', False):
-            changed, failed = self.copy_files()
+            """
+                cert file
+            """
+            changed, failed = self.copy_file(source=self.ssl_cert, dest="cert.pem")
+            changed, failed = self.copy_file(source=self.ssl_key, dest="key.pem")
+            changed, failed = self.copy_file(source=self.ssl_dh, dest="dhparams.pem")
+
+            # changed, failed = self.copy_files()
             if changed:
                 msg = "The certificate files have been copied successfully."
             else:
@@ -171,7 +178,7 @@ class MailcowTLSCerts(object):
             if os.path.isfile(d):
                 differ = self.verify(s, d)
 
-            # self.module.log(msg=f" - {s} -> {d}, differ: {differ}")
+            self.module.log(msg=f" - {s} -> {d}, differ: {differ}")
 
             if differ:
                 shutil.copyfile(s, d)
@@ -184,6 +191,27 @@ class MailcowTLSCerts(object):
         #         shutil.chown(os.path.join(root, item), self.owner, self.group)
         #     for item in files:
         #         shutil.chown(os.path.join(root, item), self.owner, self.group)
+
+        return changed, failed
+
+    def copy_file(self, source, dest=None):
+        """
+        """
+        changed = False
+        failed = False
+
+        differ = True
+        d = os.path.join(self.destination, dest)
+
+        if os.path.isfile(d):
+            differ = self.verify(source, d)
+
+        self.module.log(msg=f" - {source} -> {d}, differ: {differ}")
+
+        if differ:
+            shutil.copyfile(source, d)
+            os.chmod(d, 0o0440)
+            changed = True
 
         return changed, failed
 

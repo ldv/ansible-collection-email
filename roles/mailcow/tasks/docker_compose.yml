@@ -1,0 +1,37 @@
+---
+
+# - name: "create single compose file"
+#   bodsch.docker.compose_file:
+#     base_directory: "{{ mailcow_install_path }}/active/docker-compose.d"
+#     name: compose.yml
+#     state: present
+#     networks: {}
+#     services: {}
+#     volumes: {}
+
+# - name: d
+#   debug:
+#     msg:
+#       - "networks: {{ mailcow_compose_networks | default([]) | length > 0 }}"
+#       - "services: {{ mailcow_compose_services | default([]) | length > 0 }}"
+#       - "volumes : {{ mailcow_compose_volumes | default([]) | length > 0 }}"
+#
+# - name: d
+#   debug:
+#     msg:
+#       - "networks: {{ mailcow_compose_networks | default([]) }}"
+#       - "services: {{ mailcow_compose_services | default([]) }}"
+#       - "volumes : {{ mailcow_compose_volumes | default([]) }}"
+
+- name: "create compose files"
+  bodsch.docker.compose_files:
+    base_directory: "{{ mailcow_install_path }}/active/docker-compose.d"
+    networks: "{{ mailcow_compose_networks | default([]) }}"
+    services: "{{ mailcow_compose_services | default([]) }}"
+    volumes: "{{ mailcow_compose_volumes | default([]) }}"
+  notify:
+    - restart mailcow
+  when:
+    - mailcow_compose_networks | default([]) | length > 0 or
+      mailcow_compose_services | default([]) | length > 0 or
+      mailcow_compose_volumes | default([]) | length > 0

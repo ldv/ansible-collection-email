@@ -131,7 +131,7 @@ def test_files(host, get_vars):
         f"{install_path}/active/docker-compose.yml",
         f"{install_path}/active/mailcow.conf",
         f"{install_path}/active/.env"
-        ]
+    ]
 
     for f in files:
         d = host.file(f)
