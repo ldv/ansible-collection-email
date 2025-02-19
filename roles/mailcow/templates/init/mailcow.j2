@@ -18,6 +18,11 @@ OPTIONS_CONFIG=" \
   --output {{ mailcow_install_path }}/active/mailcow-compose.conf
 "
 
+OPTIONS_PULL=" \
+  --file {{ mailcow_install_path }}/active/mailcow-compose.conf \
+  pull
+"
+
 OPTIONS_UP=" \
   --file {{ mailcow_install_path }}/active/mailcow-compose.conf \
   up \

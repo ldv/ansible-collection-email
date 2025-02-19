@@ -1,5 +1,5 @@
 
-# Ansible Role:  `dovecot`
+# Ansible Role:  `bodsch.email.dovecot`
 
 Ansible role to install and configure dovecot on various linux systems.
 

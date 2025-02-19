@@ -56,4 +56,9 @@
       tags:
         - always
 
+- name: prepare container
+  hosts: instance
+
+  roles:
+    - role: bodsch.docker.docker
 ...

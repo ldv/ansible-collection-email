@@ -2,10 +2,10 @@
 # {{ ansible_managed }}
 
 [Unit]
-Description             = mailcow service with docker compose.
+Description             = create docker compose config file for mailcow.
 PartOf                  = docker.service
-After                   = docker.service mailcow-config.service mailcow-pull.service
-Requires                = mailcow-config.service mailcow-pull.service
+After                   = docker.service
+Before                  = mailcow-pull.service mailcow.service
 
 [Service]
 Type                    = oneshot
@@ -13,17 +13,11 @@ EnvironmentFile         = {{ mailcow_defaults_directory }}/mailcow
 
 RemainAfterExit         = true
 WorkingDirectory        = {{ mailcow_install_path }}/active
-ExecStartPre            = /bin/systemctl start mailcow-config.service
-ExecStartPre            = /bin/systemctl start mailcow-pull.service
-
 {% if mailcow_config.compose.command == 'docker-compose' %}
-ExecStart               = /usr/bin/docker-compose $OPTIONS_UP
-ExecStop                = /usr/bin/docker-compose $OPTIONS_DOWN
+ExecStart               = /usr/bin/docker-compose $OPTIONS_CONFIG
 {% else %}
-ExecStart               = /usr/bin/docker compose $OPTIONS_UP
-ExecStop                = /usr/bin/docker compose $OPTIONS_DOWN
+ExecStart               = /usr/bin/docker compose $OPTIONS_CONFIG
 {% endif %}
-TimeoutSec              = 900
 
 PrivateTmp              = yes
 UMask                   = 077

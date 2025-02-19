@@ -1,0 +1,63 @@
+---
+
+docker_config:
+  data_root: /opt/docker
+  max_concurrent_downloads: 10
+  debug: false
+  # enable experimental mode
+  experimental: true
+  # expose docker api over socket file and tcp
+  hosts:
+    - unix:///var/run/docker.sock
+    # - tcp://0.0.0.0:3485
+  # bip: "192.168.9.0/24"
+  # fixed_cidr: "192.168.9.0/24"
+  # set default search domains
+  #dns_search:
+  #  - docker.local
+  # Binding to IP address without --tlsverify is insecure and gives root access on this machine
+  # to everyone who has access to your network.
+  # Binding to an IP address without --tlsverify is deprecated
+  # Support for listening on TCP without authentication or explicit intent to run without
+  # authentication will be removed in the next release
+  tls: false
+  tlsverify: false
+  # storage_driver: overlay2
+  log_driver: "json-file"
+  log_opts:
+    "max-size": "10m"
+    "max-file": "3"
+    mode: non-blocking
+    max-buffer-size: 4m
+
+docker_container_prune:
+  enable: true
+  state: started
+  name: container-cleanup
+  filter:
+    until: 4h
+    # label: environment=mailcow
+
+docker_client_config:
+  ## the location we should push client configuration
+  - location: "/root/.docker/config.json"
+    enabled: true
+    auths:
+      registry.gitfoo.tld:
+        auth: amVua2luczpydWJiZWwtZGllLWthdHotZHUtZHVtbXNjaHfDpHR6ZXIxCg==
+      test.tld:
+        username: "FOO-was-sonst"
+        password: "ja-toll-schon-wieder-alles-scheisse!"
+    formats:
+      ps:
+        - ".ID"
+        - ".Names"
+        - ".Labels"
+        - ".Status"
+        - ".RunningFor"
+      images:
+        - ".ID"
+        - ".Size"
+        - ".Repository"
+        - ".Tag"
+        - ".CreatedAt"

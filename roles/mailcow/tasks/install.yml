@@ -99,20 +99,20 @@
       notify:
         - daemon-reload
 
-    - name: create systemd service unit docker-cleanup.service
+    - name: create systemd service unit mailcow-config.service
       ansible.builtin.template:
-        src: "init/systemd/docker-cleanup.service.j2"
-        dest: "{{ systemd_lib_directory }}/docker-cleanup.service"
+        src: "init/systemd/mailcow-config.service.j2"
+        dest: "{{ systemd_lib_directory }}/mailcow-config.service"
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
       notify:
         - daemon-reload
 
-    - name: create systemd timer unit docker-cleanup.timer
+    - name: create systemd service unit mailcow-pull.service
       ansible.builtin.template:
-        src: "init/systemd/docker-cleanup.timer.j2"
-        dest: "{{ systemd_lib_directory }}/docker-cleanup.timer"
+        src: "init/systemd/mailcow-pull.service.j2"
+        dest: "{{ systemd_lib_directory }}/mailcow-pull.service"
         owner: root
         group: root
         mode: "0644"

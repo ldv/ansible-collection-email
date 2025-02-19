@@ -1,5 +1,5 @@
 
-# Ansible Role:  `postfix`
+# Ansible Role:  `bodsch.email.postfix`
 
 Ansible role to install and configure postfix on various linux systems.
 
