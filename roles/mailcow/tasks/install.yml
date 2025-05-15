@@ -35,14 +35,21 @@
     - stat_mailcow_installed.stat is defined
     - stat_mailcow_installed.stat.exists | default('false')
 
+- name: d
+  debug:
+    msg:
+      - "{{ mailcow_repository_information }}"
+      - "{{ mailcow_installed_information }}"
+
 - name: define fact variables
   ansible.builtin.set_fact:
     _mailcow_repo_cloned: "{{ stat_mailcow_repository.stat.exists | default('false') }}"
     _mailcow_installed: "{{ stat_mailcow_installed.stat.exists | default('false') }}"
     _mailcow_activated: "{{ stat_mailcow_activated.stat.exists | default('false') }}"
-    _mailcow_new_version: "{{ not mailcow_repository_information.git.commit_short_id | default('left') ==
-        mailcow_installed_information.git.commit_short_id | default('right') }}"
-    _mailcow_information: "{{ mailcow_installed_information.git }}"
+    #_mailcow_new_version: "{{ not mailcow_repository_information.git.commit_short_id | default('left') ==
+    #    mailcow_installed_information.git.commit_short_id | default('right') }}"
+    _mailcow_new_version: "{{ mailcow_repository_information | bodsch.email.mailcow_compare_version(mailcow_installed_information) }}"
+    _mailcow_information: "{{ mailcow_installed_information.git | default({}) }}"
 
 - name: install mailcow
   when:
@@ -123,6 +130,12 @@
 - name: merge mailcow configuration between defaults and custom
   ansible.builtin.set_fact:
     mailcow_config: "{{ mailcow_default_config | combine(mailcow_config, recursive=True) }}"
+
+- name: copy custom update script
+  ansible.builtin.copy:
+    src: mailcow-update.py
+    dest: "{{ mailcow_install_path }}/active/"
+    mode: "0750"
 
 - name: systemd
   when:

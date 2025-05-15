@@ -1,5 +1,10 @@
 ---
 
+mailcow_git:
+  repository: https://github.com/mailcow/mailcow-dockerized.git
+  version: 2025-03b
+
+
 mailcow_services:
   mailcow:
     state: stopped

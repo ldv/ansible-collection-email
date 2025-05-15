@@ -2,7 +2,7 @@
 # {{ ansible_managed }}
 {% set _version = "unknown" %}
 {% if _mailcow_information is defined %}
-{% set _version = _mailcow_information.version %}
+  {% set _version = _mailcow_information.branch %}
 {% endif %}
 {% set _networks =  mailcow_compose_networks | bodsch.email.mailcow_compose_active() %}
 {% set _services =  mailcow_compose_services | bodsch.email.mailcow_compose_active(_version) %}

@@ -5,7 +5,7 @@ __metaclass__ = type
 import netaddr
 
 from ansible.utils.display import Display
-
+from ansible.plugins.test.core import version_compare
 
 display = Display()
 
@@ -18,6 +18,7 @@ class FilterModule(object):
         return {
             'mailcow_ports': self.mailcow_ports,
             'mailcow_compose_active': self.mailcow_compose_active,
+            'mailcow_compare_version': self.mailcow_compare_version,
         }
 
     def mailcow_ports(self, data):
@@ -44,54 +45,38 @@ class FilterModule(object):
     def mailcow_compose_active(self, data, git_version=None):
         """
         """
-        # display.v(f"mailcow_compose_active(data, {git_version})")
+        display.v(f"mailcow_compose_active(data, {git_version})")
         result = [f"{x.get("name")}.conf" for x in data if x.get("state", "present") == "present"]
+
+        display.v(f" - {result}")
 
         if git_version:
             # https://github.com/mailcow/mailcow-dockerized/releases/tag/2025-01a
             # https://mailcow.email/posts/2025/release-2025-01/
             # With 2025-01 SOLR is saying arrivederci to mailcow.
             # It will be replaced with Flatcurve instead, which is not using a seperate container like SOLR and is directly integrated into the Dovecot Core.
-            compare = self.version_compare(git_version, '2025-01', '>=')
+            compare = version_compare(str(git_version), '2025-01', '>=')
             if compare:
                 import re
                 result = [x for x in result if not re.search(r".*solr.*", x)]
 
         return result
 
-    def version_compare(self, value, version, compare_operator='eq'):
-        ''' Perform a version comparison on a value '''
-        import operator
-        from packaging.version import Version
-        # from ansible import errors
-        from ansible.module_utils.common.text.converters import to_native, to_text
+    def mailcow_compare_version(self, data, installed={}):
+        """
+        """
+        display.v(f"mailcow_compare_version({data}, {installed})")
 
-        op_map = {
-            '==': 'eq', '=': 'eq', 'eq': 'eq',
-            '<': 'lt', 'lt': 'lt',
-            '<=': 'le', 'le': 'le',
-            '>': 'gt', 'gt': 'gt',
-            '>=': 'ge', 'ge': 'ge',
-            '!=': 'ne', '<>': 'ne', 'ne': 'ne'
-        }
+        # not mailcow_repository_information.git.commit_short_id | default('left') ==
+        #    mailcow_installed_information.git.commit_short_id | default('right')
+        repository_information = data.get("git", {}).get("commit_short_id", "left")
+        installed_information = installed.get("git", {}).get("commit_short_id", "right")
 
-        if not value:
-            raise ("Input version value cannot be empty")
+        display.v(f"  - {repository_information}")
+        display.v(f"  - {installed_information}")
 
-        if not version:
-            raise ("Version parameter to compare against cannot be empty")
+        result = not (repository_information == installed_information)
 
-        if compare_operator in op_map:
-            compare_operator = op_map[compare_operator]
-        else:
-            valid_compare = ", ".join(map(repr, op_map))
+        display.v(f"= {result}")
 
-            raise (
-                f'Invalid operator type ({compare_operator}). Must be one of {valid_compare}')
-
-        try:
-            method = getattr(operator, compare_operator)
-            return method(Version(to_text(value)), Version(to_text(version)))
-
-        except Exception as e:
-            raise (f'Version comparison failed: {to_native(e)}')
+        return result

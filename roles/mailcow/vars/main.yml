@@ -10,6 +10,9 @@ mailcow_dependencies:
   - python3-ruamel.yaml
   - python3-git
 
+mailcow_installed_information:
+  git: {}
+
 # ---------------------------------------------------------------------------------------
 
 mailcow_default_config:
