@@ -1,11 +1,122 @@
 #!/usr/bin/python3
 
-import git
 import os
+import sys
+import git
 import re
 import yaml
 import docker
 import argparse
+from difflib import ndiff
+from collections import defaultdict
+
+class DiffImageLists():
+    """
+    """
+    def __init__(self, local_images, remote_images):
+        self.local_images = local_images
+        self.remote_images = remote_images
+
+    def parse_image(self, image):
+        # Gibt ('registry/namespace/image', 'tag') zurück
+        if ':' in image:
+            name, tag = image.rsplit(':', 1)
+        else:
+            name, tag = image, 'latest'
+        return name, tag
+
+    def basename(self, image_name):
+        """Extracts image name without registry or namespace."""
+        parts = image_name.split('/')
+        return parts[-1]
+
+    def normalize_image_list(self, image_list):
+        return dict(self.parse_image(img) for img in image_list)
+
+    def normalize_image_list_with_basename(self, image_list):
+        """Returns a dict of full_name -> tag and a dict base:tag -> list of full names."""
+        full_map = {}
+        base_map = defaultdict(list)
+        for img in image_list:
+            name, tag = self.parse_image(img)
+            base_id = f"{self.basename(name)}:{tag}"
+            full_map[name] = tag
+            base_map[base_id].append(name)
+        return full_map, base_map
+
+    def image_diff(self):
+
+        local_dict = self.normalize_image_list(self.local_images)
+        remote_dict = self.normalize_image_list(self.remote_images)
+
+        output_lines = []
+        header = f"{'Image':<40} | {'Local Tag':<15} | {'Remote Tag':<15}"
+        output_lines.append(header)
+        output_lines.append("=" * len(header))
+
+        all_names = sorted(set(local_dict.keys()) | set(remote_dict.keys()))
+
+        # header = f"{'Image':<40} | {'Local Tag':<15} | {'Remote Tag':<15}"
+        # print(header)
+        # print("="* len(header))
+
+        for name in all_names:
+            local_tag = local_dict.get(name, "")
+            remote_tag = remote_dict.get(name, "")
+            tag_note = ""
+
+            if local_tag != remote_tag:
+                tag_note = " <-- different" if local_tag and remote_tag else " <-- added/removed"
+
+            output_lines.append(f"{name:<40} | {local_tag:<15} | {remote_tag:<15}{tag_note}")
+
+        print("\n".join(output_lines))
+
+    def image_and_registry_diff(self):
+        local_map, local_base = self.normalize_image_list_with_basename(self.local_images)
+        remote_map, remote_base = self.normalize_image_list_with_basename(self.remote_images)
+
+        output_lines = []
+        header = f"{'Image':<40} | {'Local Tag':<15} | {'Remote Tag':<15} | Note"
+        output_lines.append(header)
+        output_lines.append("=" * len(header))
+
+        all_base_ids = set(local_base.keys()) | set(remote_base.keys())
+
+        for base_id in sorted(all_base_ids):
+            local_names = local_base.get(base_id, [])
+            remote_names = remote_base.get(base_id, [])
+
+            # Falls image:tag nur lokal oder nur remote ist
+            if not remote_names:
+                for name in local_names:
+                    output_lines.append(f"{name:<40} | {local_map[name]:<15} | {'':<15} | added/removed")
+                continue
+            if not local_names:
+                for name in remote_names:
+                    output_lines.append(f"{name:<40} | {'':<15} | {remote_map[name]:<15} | added/removed")
+                continue
+
+            # Jetzt: image:tag existiert auf beiden Seiten, ggf. unterschiedliche registries
+            for local_name in local_names:
+                for remote_name in remote_names:
+                    local_tag = local_map.get(local_name, "")
+                    remote_tag = remote_map.get(remote_name, "")
+                    note = ""
+
+                    if local_tag != remote_tag:
+                        note = "container update"
+                    elif local_name != remote_name:
+                        note = "registry change"
+                    else:
+                        # Gleiches image und Tag, keine Änderung
+                        continue
+
+                    combined_name = f"{local_name} ⇄ {remote_name}" if local_name != remote_name else local_name
+                    output_lines.append(f"{combined_name:<40} | {local_tag:<15} | {remote_tag:<15} | {note}")
+
+        print("\n".join(output_lines))
+
 
 class MailcowUpdater():
     """
@@ -18,8 +129,13 @@ class MailcowUpdater():
 
         self.compose_file = self.args.compose
         self.compose_dir = self.args.compose_dir
+        self.update_url = self.args.git_url
         self.update_branch = self.args.branch
         self.dry_run = self.args.dry_run
+
+        if self.compose_file is None and self.compose_dir is None:
+            print("please use '--compose' or '--compose-dir'")
+            sys.exit(1)
 
     def parse_args(self):
         """
@@ -32,7 +148,7 @@ class MailcowUpdater():
             "--compose",
             required=False,
             help="compose file",
-            default="mailcow-compose.conf"
+            default=None
         )
 
         # TODO
@@ -41,7 +157,15 @@ class MailcowUpdater():
             "--compose-dir",
             required=False,
             help="directory with many compose files",
-            default="docker-compose.d"
+            default=None
+        )
+
+        p.add_argument(
+            "-G",
+            "--git-url",
+            required=False,
+            help="git urls for update",
+            default="https://github.com/mailcow/mailcow-dockerized.git"
         )
 
         p.add_argument(
@@ -69,12 +193,16 @@ class MailcowUpdater():
         if self.compose_dir:
             compose_data = self.read_compose_dir()
 
-        self.compare_images(
+        added_images, removed_images = self.compare_images(
             compose_data = compose_data,
             local_file_path = self.compose_file,
-            remote_url = None,
+            remote_url = self.update_url,
             branch = self.update_branch
         )
+
+        if len(added_images) > 0:
+            if not self.dry_run:
+                self.pull_new_container(added_images)
 
     def read_compose_dir(self):
         """
@@ -82,23 +210,15 @@ class MailcowUpdater():
         data = dict()
         data["services"] = dict()
         for compose_file in os.listdir(self.compose_dir):
-            print(compose_file)
-
             _file = os.path.join(self.compose_dir, compose_file)
             try:
                 with open(_file) as f:
                     d = yaml.safe_load(f)
-
                     service = d.get("services")
-
-                    print(service)
-
                     data["services"].update(service)
 
             except Exception as e:
                 print(f"⚠️ Errors when reading {compose_file}: {e}")
-
-        print(data)
 
         return data
 
@@ -106,7 +226,7 @@ class MailcowUpdater():
         """
         Liest die docker-compose.yml Datei und extrahiert alle Image-Namen.
         """
-        print("local images ...")
+        # print("local images ...")
 
         if not compose_data:
             with open(file_path, 'r') as file:
@@ -115,45 +235,45 @@ class MailcowUpdater():
             docker_compose_content = compose_data
 
         # Suche nach allen Image-Referenzen
-        image_lines = []
+        images = []
         if isinstance(docker_compose_content, dict):
-            # services = docker_compose_content.get('services', {})
-            image_lines = [conf.get("image") for service, conf in docker_compose_content.get('services', {}).items()]
+            images = [conf.get("image") for service, conf in docker_compose_content.get('services', {}).items()]
 
-            # Hier wird das Dictionary durchlaufen
-            #for service, config in docker_compose_content.get('services', {}).items():
-            #    image = config.get('image')
-            #    if image:
-            #        image_lines.append(image)
+        images = sorted(images)
 
-        # print(f"  - {image_lines}")
+        # print(f"  - {images}")
 
-        return image_lines
+        return images
 
-    def get_images_from_remote_docker_compose(self, remote_url=None, repo_path=".", branch="master"):
+    def get_images_from_remote_docker_compose(self, remote_url=None, repo_path="/tmp/mailcow", branch="master"):
 
-        print("remote images ...")
+        # print("remote images ...")
 
-        if remote_url is not None:
-            # Klonen des Remote-Repositorys in ein temporäres Verzeichnis
-            repo = git.Repo.clone_from(remote_url, "/tmp")
-
-        if repo_path:
+        if os.path.exists(os.path.join(repo_path, ".git")):
+            # Repository existiert bereits – öffne es und mache ein Pull
             repo = git.Repo(repo_path)
+            origin = repo.remotes.origin
+            origin.pull()
+        else:
+            # Repository existiert noch nicht – klone es
+            repo = git.Repo.clone_from(remote_url, repo_path)
+
+        repo = git.Repo(repo_path)
 
         # Holen der Datei aus dem angegebenen Branch
         docker_compose_content = repo.git.show(f"origin/{branch}:docker-compose.yml")
 
         # Regex für das Extrahieren der "image:"-Zeilen
-        image_lines = re.findall(r"image:\s*(\S+)", docker_compose_content)
+        images = re.findall(r"image:\s*(\S+)", docker_compose_content)
 
-        # print(f"  - {image_lines}")
+        images = sorted(images)
 
-        return image_lines
+        # print(f"  - {images}")
 
-    def docker_pull_with_dockerpy(self, images):
+        return images
+
+    def pull_new_container(self, images):
         """
-        Verwendet docker-py, um das Docker-Image zu ziehen.
         """
         client = docker.from_env()
 
@@ -165,12 +285,44 @@ class MailcowUpdater():
             except docker.errors.APIError as e:
                 print(f"Error when pulling the image {image}: {str(e)}")
 
+    def side_by_side_diff(self, local_images, remote_images):
+        """
+        """
+        def split_image(image):
+            if ':' in image:
+                name, tag = image.split(':', 1)
+            else:
+                name, tag = image, 'latest'
+            return name, tag
+
+        # Indexiere beide Listen nach dem Image-Namen
+        local_dict = {split_image(img)[0]: img for img in local_images}
+        remote_dict = {split_image(img)[0]: img for img in remote_images}
+
+        all_keys = sorted(set(local_dict.keys()) | set(remote_dict.keys()))
+
+        print("{:<40} | {:<40}".format("Local Images", "Remote Images"))
+        print("=" * 85)
+
+        for key in all_keys:
+            local = local_dict.get(key, "")
+            remote = remote_dict.get(key, "")
+            print("{:<40} | {:<40}".format(local, remote))
+
     def compare_images(self, compose_data, local_file_path, remote_url, branch):
         """
         Vergleicht die Image-Namen der lokalen und der Remote docker-compose.yml.
         """
         local_images = self.get_images_from_docker_compose_file(compose_data, local_file_path)
-        remote_images = self.get_images_from_remote_docker_compose(remote_url=None, repo_path=".", branch="master")
+        remote_images = self.get_images_from_remote_docker_compose(remote_url=remote_url, repo_path="/tmp/mailcow", branch=branch)
+
+        # print(local_images)
+
+        diff = DiffImageLists(local_images, remote_images)
+        diff.image_diff()
+        print("\n")
+        diff.image_and_registry_diff()
+        print("\n")
 
         # Finden von Unterschieden zwischen den Images
         local_set = set(local_images)
@@ -189,25 +341,16 @@ class MailcowUpdater():
             for image in added_images:
                 print(f"  - {image}")
 
-            if not self.dry_run:
-                self.docker_pull_with_dockerpy(added_images)
-
         if removed_images:
             print("Removed images (local vs. remote):")
             for image in removed_images:
                 print(f"  - {image}")
 
-# local_file_path = "./docker-compose.yml"
-# remote_url = None # "https://github.com/username/repository.git"  # URL des Remote-Repositorys
-# repo_path="."
-# branch = "master"  # Hier kannst du den Branchnamen anpassen
-#
-# compare_images(local_file_path, remote_url, branch)
+        return (added_images, removed_images)
 
 
 def main(requirements_file="collections.yml"):
     """
-    Hauptfunktion: prüft installierte vs. benötigte Collections und installiert bei Bedarf.
     """
     updater = MailcowUpdater()
     updater.run()
