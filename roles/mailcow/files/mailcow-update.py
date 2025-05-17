@@ -1,4 +1,9 @@
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+# (c) 2025, Bodo Schulz <bodo@boone-schulz.de>
+# Apache-2.0 (see LICENSE or https://opensource.org/license/apache-2-0)
+# SPDX-License-Identifier: Apache-2.0
 
 import os
 import sys
@@ -7,18 +12,37 @@ import re
 import yaml
 import docker
 import argparse
-from difflib import ndiff
+
+from urllib.parse import urlparse, urlunparse
+from pathlib import Path
 from collections import defaultdict
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    DEBUG = '\033[1m\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 class DiffImageLists():
     """
     """
+
     def __init__(self, local_images, remote_images):
         self.local_images = local_images
         self.remote_images = remote_images
 
     def parse_image(self, image):
-        # Gibt ('registry/namespace/image', 'tag') zurück
+        """
+            Gibt ('registry/namespace/image', 'tag') zurück
+        """
         if ':' in image:
             name, tag = image.rsplit(':', 1)
         else:
@@ -26,15 +50,20 @@ class DiffImageLists():
         return name, tag
 
     def basename(self, image_name):
-        """Extracts image name without registry or namespace."""
+        """
+            Extracts image name without registry or namespace.
+        """
         parts = image_name.split('/')
+
         return parts[-1]
 
     def normalize_image_list(self, image_list):
         return dict(self.parse_image(img) for img in image_list)
 
     def normalize_image_list_with_basename(self, image_list):
-        """Returns a dict of full_name -> tag and a dict base:tag -> list of full names."""
+        """
+            Returns a dict of full_name -> tag and a dict base:tag -> list of full names.
+        """
         full_map = {}
         base_map = defaultdict(list)
         for img in image_list:
@@ -42,6 +71,7 @@ class DiffImageLists():
             base_id = f"{self.basename(name)}:{tag}"
             full_map[name] = tag
             base_map[base_id].append(name)
+
         return full_map, base_map
 
     def image_diff(self):
@@ -73,54 +103,231 @@ class DiffImageLists():
         print("\n".join(output_lines))
 
     def image_and_registry_diff(self):
-        local_map, local_base = self.normalize_image_list_with_basename(self.local_images)
-        remote_map, remote_base = self.normalize_image_list_with_basename(self.remote_images)
+        # local_dict = {self.parse_image(img)[0]: self.parse_image(img)[1] for img in self.local_images}
+        # remote_dict = {self.parse_image(img)[0]: self.parse_image(img)[1] for img in self.remote_images}
+
+        # Map basenames to full names
+        local_by_base = defaultdict(list)
+        remote_by_base = defaultdict(list)
+
+        for img in self.local_images:
+            name, tag = self.parse_image(img)
+            local_by_base[self.basename(name)].append((name, tag))
+
+        for img in self.remote_images:
+            name, tag = self.parse_image(img)
+            remote_by_base[self.basename(name)].append((name, tag))
 
         output_lines = []
-        header = f"{'Image':<40} | {'Local Tag':<15} | {'Remote Tag':<15} | Note"
+        header = f"{'Image':<60} | {'Local Tag':<15} | {'Remote Tag':<15} | Note"
         output_lines.append(header)
         output_lines.append("=" * len(header))
 
-        all_base_ids = set(local_base.keys()) | set(remote_base.keys())
+        all_basenames = sorted(set(local_by_base.keys()) | set(remote_by_base.keys()))
 
-        for base_id in sorted(all_base_ids):
-            local_names = local_base.get(base_id, [])
-            remote_names = remote_base.get(base_id, [])
+        for base in all_basenames:
+            local_entries = local_by_base.get(base, [])
+            remote_entries = remote_by_base.get(base, [])
 
-            # Falls image:tag nur lokal oder nur remote ist
-            if not remote_names:
-                for name in local_names:
-                    output_lines.append(f"{name:<40} | {local_map[name]:<15} | {'':<15} | added/removed")
-                continue
-            if not local_names:
-                for name in remote_names:
-                    output_lines.append(f"{name:<40} | {'':<15} | {remote_map[name]:<15} | added/removed")
-                continue
+            matched_local = set()
+            matched_remote = set()
 
-            # Jetzt: image:tag existiert auf beiden Seiten, ggf. unterschiedliche registries
-            for local_name in local_names:
-                for remote_name in remote_names:
-                    local_tag = local_map.get(local_name, "")
-                    remote_tag = remote_map.get(remote_name, "")
-                    note = ""
-
-                    if local_tag != remote_tag:
-                        note = "container update"
-                    elif local_name != remote_name:
-                        note = "registry change"
-                    else:
-                        # Gleiches image und Tag, keine Änderung
+            # 1. Match by basename (but registry differs)
+            for i, (lname, ltag) in enumerate(local_entries):
+                note = None
+                if i in matched_local:
+                    continue
+                for j, (rname, rtag) in enumerate(remote_entries):
+                    if j in matched_remote:
                         continue
 
-                    combined_name = f"{local_name} ⇄ {remote_name}" if local_name != remote_name else local_name
-                    output_lines.append(f"{combined_name:<40} | {local_tag:<15} | {remote_tag:<15} | {note}")
+                    if (lname == rname) and (ltag == rtag):
+                        matched_local.add(i)
+                        matched_remote.add(j)
+                        continue
+
+                    if ltag == rtag:
+                        note = "registry change"
+                        _reg = f"{lname} ⇄ {rname}"
+                        output_lines.append(
+                            f"{bcolors.BOLD}{_reg:<60}{bcolors.ENDC} | {ltag:<15} | {rtag:<15} | {note}"
+                        )
+                    elif (lname != rname) and (ltag != rtag):
+                        note = "full update"
+                        _reg = f"{lname} ⇄ {rname}"
+                        output_lines.append(
+                            f"{bcolors.BOLD}{_reg:<60}{bcolors.ENDC} | {ltag:<15} | {bcolors.BOLD}{rtag:<15}{bcolors.ENDC} | {note}"
+                        )
+                    else:
+                        note = "container update"
+                        _reg = f"{lname} ⇄ {rname}"
+                        output_lines.append(
+                            f"{_reg:<60} | {ltag:<15} | {bcolors.BOLD}{rtag:<15}{bcolors.ENDC} | {note}"
+                        )
+
+                    matched_local.add(i)
+                    matched_remote.add(j)
+                    break
+
+            # 3. Unmatched local
+            for i, (lname, ltag) in enumerate(local_entries):
+                if i not in matched_local:
+                    output_lines.append(
+                        f"{lname:<60} | {bcolors.BOLD}{ltag:<15}{bcolors.ENDC} | {'':<15} | removed"
+                    )
+
+            # 4. Unmatched remote
+            for j, (rname, rtag) in enumerate(remote_entries):
+                if j not in matched_remote:
+                    output_lines.append(
+                        f"{rname:<60} | {'':<15} | {bcolors.BOLD}{rtag:<15}{bcolors.ENDC} | added"
+                    )
 
         print("\n".join(output_lines))
+
+
+class GitHandler():
+    """
+    """
+
+    def __init__(self, clone_path, repo_url, branch, git_user=None, git_token=None):
+        """
+        """
+        self.clone_path = clone_path
+        self.git_branch = branch
+        self.git_repo_url = repo_url
+        self.git_token = git_token
+        self.git_user = git_user
+
+        print(self.git_repo_url)
+
+        sections = urlparse(self.git_repo_url)
+        repo = sections.path.split('/')[-1]
+        repo_name = Path(repo).stem
+
+        print(repo_name)
+
+    def _git_remote_url(self):
+        parsed_url = urlparse(self.git_repo_url)
+        if self.git_user and self.git_token:
+            netloc = f"{self.git_user}:{self.git_token}@{parsed_url.hostname}"
+            url_with_auth = str(urlunparse(parsed_url._replace(netloc=netloc)))
+            return url_with_auth
+        else:
+            return self.git_repo_url
+        # self.logger.debug(f'Git Url with Auth: {url_with_auth}')
+
+    def checkout_target(self):
+        """
+        Führt ein robustes Checkout durch, egal ob Branch, Tag oder Commit.
+        """
+        target = self.git_branch
+
+        # Existiert als lokaler Branch
+        if target in self.repo.heads:
+            print(f"Checkout local branch: {target}")
+            self.repo.heads[target].checkout()
+            self.repo.remotes.origin.pull(target)
+
+        # Existiert als Remote-Branch
+        elif f'origin/{target}' in self.repo.refs:
+            print(f"Checkout remote branch: {target}")
+            self.repo.git.checkout('-b', target, f'origin/{target}')
+            self.repo.remotes.origin.pull(target)
+
+        # Existiert als Tag
+        elif target in self.repo.tags:
+            print(f"Checkout tag: {target}")
+            self.repo.git.checkout(f'tags/{target}')
+            print("Note: Detached HEAD state, no pull will be performed.")
+
+        # Vielleicht ein Commit-Hash?
+        else:
+            try:
+                print(f"Trying to checkout commit: {target}")
+                self.repo.git.checkout(target)
+                print("Note: Detached HEAD state.")
+            except Exception:
+                print(f"Error: Branch, tag or commit '{target}' not found.")
+                sys.exit(1)
+
+        self.last_commit_hash = self.repo.head.commit.hexsha
+        print(f"Checked out commit: {self.last_commit_hash}")
+
+    def clone_repo(self):
+        """
+        """
+        try:
+            if not os.path.exists(f"{self.clone_path}/.git"):
+                print(f"Cloning git repo {self.git_repo_url}")
+                self.repo = git.Repo.clone_from(
+                    self._git_remote_url(), self.clone_path)
+            else:
+                print("Repo already cloned.")
+                self.repo = git.Repo(self.clone_path)
+
+            # Neuer, robuster Checkout
+            self.checkout_target()
+
+        except git.GitCommandError as e:
+            print(f"Git error: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            sys.exit(1)
+
+        return True
+
+    def clone_git_repo(self):
+        """
+        """
+        try:
+            if not os.path.exists(f"{self.clone_path}/.git"):
+                # print(f"Cloning git repo {self.git_repo_url}")
+                self.repo = git.Repo.clone_from(
+                    self._git_remote_url(), self.clone_path)
+            else:
+                print(
+                    "Repo already cloned, pulling latest changes.")
+
+                try:
+                    self.repo = git.Repo(self.clone_path)
+                    # print(f"Checking out branch {self.git_branch}")
+                    self.repo.git.checkout(self.git_branch)
+
+                    self.repo.remotes.origin.pull()
+                except git.GitCommandError as e:
+                    print(f"Error pulling updates from git repo: {e}")
+                    sys.exit(1)
+                except Exception as e:
+                    print(f"Error pulling updates from git repo: {e}")
+                    sys.exit(1)
+
+        except Exception as e:
+            print(f"Error cloning git repo: {e}")
+            exit(1)
+
+        self.last_commit_hash = self.repo.head.commit.hexsha
+        print(self.last_commit_hash)
+
+        return True
+
+    def show_content(self, content):
+        """
+            Zeigt den Inhalt einer Datei im aktuell ausgecheckten Zustand (Branch, Tag oder Commit).
+        """
+        try:
+            # HEAD steht für den aktuell ausgecheckten Commit, egal ob Branch, Tag, SHA
+            return self.repo.git.show(f"HEAD:{content}")
+        except git.GitCommandError as e:
+            print(f"Fehler beim Anzeigen des Inhalts von '{content}': {e}")
+            return None
 
 
 class MailcowUpdater():
     """
     """
+
     def __init__(self):
         """
         """
@@ -181,7 +388,7 @@ class MailcowUpdater():
             required=False,
             help="do nothing.",
             action='store_true',
-            default=False
+            default=True
         )
 
         self.args = p.parse_args()
@@ -193,16 +400,16 @@ class MailcowUpdater():
         if self.compose_dir:
             compose_data = self.read_compose_dir()
 
-        added_images, removed_images = self.compare_images(
+        self.compare_images(
             compose_data = compose_data,
             local_file_path = self.compose_file,
             remote_url = self.update_url,
             branch = self.update_branch
         )
 
-        if len(added_images) > 0:
-            if not self.dry_run:
-                self.pull_new_container(added_images)
+        # if len(added_images) > 0:
+        #     if not self.dry_run:
+        #         self.pull_new_container(added_images)
 
     def read_compose_dir(self):
         """
@@ -214,8 +421,9 @@ class MailcowUpdater():
             try:
                 with open(_file) as f:
                     d = yaml.safe_load(f)
-                    service = d.get("services")
-                    data["services"].update(service)
+                    service = d.get("services", None)
+                    if service:
+                        data["services"].update(service)
 
             except Exception as e:
                 print(f"⚠️ Errors when reading {compose_file}: {e}")
@@ -224,9 +432,8 @@ class MailcowUpdater():
 
     def get_images_from_docker_compose_file(self, compose_data, file_path):
         """
-        Liest die docker-compose.yml Datei und extrahiert alle Image-Namen.
+            Liest die docker-compose.yml Datei und extrahiert alle Image-Namen.
         """
-        # print("local images ...")
 
         if not compose_data:
             with open(file_path, 'r') as file:
@@ -241,34 +448,27 @@ class MailcowUpdater():
 
         images = sorted(images)
 
-        # print(f"  - {images}")
-
         return images
 
     def get_images_from_remote_docker_compose(self, remote_url=None, repo_path="/tmp/mailcow", branch="master"):
+        """
+        """
+        _git = GitHandler(
+            clone_path=repo_path,
+            repo_url=remote_url,
+            branch=branch
+        )
+        _git.clone_repo()
 
-        # print("remote images ...")
+        docker_compose_content = _git.show_content("docker-compose.yml")
 
-        if os.path.exists(os.path.join(repo_path, ".git")):
-            # Repository existiert bereits – öffne es und mache ein Pull
-            repo = git.Repo(repo_path)
-            origin = repo.remotes.origin
-            origin.pull()
-        else:
-            # Repository existiert noch nicht – klone es
-            repo = git.Repo.clone_from(remote_url, repo_path)
-
-        repo = git.Repo(repo_path)
-
-        # Holen der Datei aus dem angegebenen Branch
-        docker_compose_content = repo.git.show(f"origin/{branch}:docker-compose.yml")
+        if docker_compose_content is None:
+            sys.exit(1)
 
         # Regex für das Extrahieren der "image:"-Zeilen
         images = re.findall(r"image:\s*(\S+)", docker_compose_content)
 
         images = sorted(images)
-
-        # print(f"  - {images}")
 
         return images
 
@@ -316,37 +516,33 @@ class MailcowUpdater():
         local_images = self.get_images_from_docker_compose_file(compose_data, local_file_path)
         remote_images = self.get_images_from_remote_docker_compose(remote_url=remote_url, repo_path="/tmp/mailcow", branch=branch)
 
-        # print(local_images)
-
         diff = DiffImageLists(local_images, remote_images)
-        diff.image_diff()
-        print("\n")
+        print("")
         diff.image_and_registry_diff()
-        print("\n")
+        print("")
 
-        # Finden von Unterschieden zwischen den Images
-        local_set = set(local_images)
-        remote_set = set(remote_images)
-
-        added_images = remote_set - local_set
-        removed_images = local_set - remote_set
-
-        if added_images or removed_images:
-            print("Differences in the container images:")
-        else:
-            print("No differences in the container images.")
-
-        if added_images:
-            print("Added images (remote vs. local):")
-            for image in added_images:
-                print(f"  - {image}")
-
-        if removed_images:
-            print("Removed images (local vs. remote):")
-            for image in removed_images:
-                print(f"  - {image}")
-
-        return (added_images, removed_images)
+        # # Finden von Unterschieden zwischen den Images
+        # local_set = set(local_images)
+        # remote_set = set(remote_images)
+        #
+        # added_images = remote_set - local_set
+        # removed_images = local_set - remote_set
+        #
+        # if added_images or removed_images:
+        #     print("Differences in the container images:")
+        # else:
+        #     print("No differences in the container images.")
+        #
+        # if added_images:
+        #     print("changed images (remote vs. local):")
+        #     for image in added_images:
+        #         print(f"  - {image}")
+        #
+        # if removed_images:
+        #     print("Removed images (local vs. remote):")
+        #     for image in removed_images:
+        #         print(f"  - {image}")
+        # return (added_images, removed_images)
 
 
 def main(requirements_file="collections.yml"):

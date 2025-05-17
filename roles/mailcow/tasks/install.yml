@@ -131,6 +131,12 @@
   ansible.builtin.set_fact:
     mailcow_config: "{{ mailcow_default_config | combine(mailcow_config, recursive=True) }}"
 
+- name: create docker-compose.d directory
+  ansible.builtin.file:
+    path: "{{ mailcow_install_path }}/active/docker-compose.d"
+    state: directory
+    mode: "0750"
+
 - name: copy custom update script
   ansible.builtin.copy:
     src: mailcow-update.py
