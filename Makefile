@@ -3,34 +3,15 @@ export COLLECTION_NAMESPACE ?= bodsch
 export COLLECTION_NAME      ?= email
 export COLLECTION_ROLE      ?=
 export COLLECTION_SCENARIO  ?= default
+export TOX_ANSIBLE          ?= ansible_9.5
+# --------------------------------------------------------
 
-.PHONY: install uninstall doc converge test destroy verify lint gh-clean
+# Alle Targets, die schlicht ein Skript in hooks/ aufrufen
+HOOKS := install uninstall doc prepare converge destroy verify test lint gh-clean
 
-default: converge
+.PHONY: $(HOOKS)
+.DEFAULT_GOAL := converge
 
-install:
-	@hooks/install
-
-uninstall:
-	@hooks/uninstall
-
-doc:
-	@hooks/doc
-
-converge:
-	@hooks/converge
-
-test:
-	@hooks/test
-
-destroy:
-	@hooks/destroy
-
-verify:
-	@hooks/verify
-
-lint:
-	@hooks/lint
-
-gh-clean:
-	@hooks/gh-clean
+# $@ expandiert zu dem Namen des gerade angeforderten Targets
+$(HOOKS):
+	@hooks/$@
