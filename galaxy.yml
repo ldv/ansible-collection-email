@@ -20,7 +20,7 @@ tags:
 
 dependencies:
   "community.general": "*"
-  "bodsch.core": "*"
+  "bodsch.core": ">=2.7.0"
 
 repository: https://github.com/bodsch/ansible-collection-email
 documentation: https://github.com/bodsch/ansible-collection-email/README.md
