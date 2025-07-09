@@ -46,7 +46,11 @@ class FilterModule(object):
         """
         """
         display.v(f"mailcow_compose_active(data, {git_version})")
-        result = [f"{x.get("name")}.conf" for x in data if x.get("state", "present") == "present"]
+        result = [
+            f"{x.get('name')}.conf"
+            for x in data
+            if x.get("state", "present") == "present"
+        ]
 
         display.v(f" - {result}")
 
