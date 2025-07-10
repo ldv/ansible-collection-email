@@ -233,6 +233,8 @@ class ToxRunner:
                 if local_tox_file.exists() and local_requirements_file.exists():
                     # print(f"[INFO] tox default scenario at {role_path}")
                     self._run_tox(role_path, env)
+                else:
+                    logger.error("missing tox.ini or test-requirements.txt")
 
             self._remove_configs(role_path)
 
@@ -243,16 +245,20 @@ class ToxRunner:
     def _copy_configs(self, role_path: Path) -> None:
         """
         """
-        # print(f"ToxRunner::_copy_configs({role_path})")
+        logging.debug(f"ToxRunner::_copy_configs({role_path})")
 
         for fname in ['requirements.txt', 'test-requirements.txt', 'tox.ini']:
             src = self.cwd / fname
+
+            logging.debug(f"  - {src}")
             if src.exists():
                 try:
                     shutil.copy(src, role_path / fname)
-                    logging.debug(f" Copied {fname} to {role_path}")
+                    logging.debug(f"Copied {fname} to {role_path}")
                 except IOError as e:
                     logging.warning(f"Could not copy {fname}: {e}")
+            else:
+                logging.warning(f"missing: {src}")
 
     def _remove_configs(self, role_path: Path) -> None:
         """
@@ -281,7 +287,11 @@ class ToxRunner:
         if scenario:
             cmd += ["--scenario-name", scenario]
 
+        cmd_str = ' '.join(cmd)
+
         try:
+            logging.info(f"run tox: {cmd_str}")
+
             subprocess.run(
                 cmd,
                 cwd=str(cwd),
@@ -294,7 +304,7 @@ class ToxRunner:
         except subprocess.CalledProcessError as e:
             """
             """
-            cmd_str = ' '.join(cmd)
+
             logging.error(f"tox failed in {cwd}")
             logging.error("Command:")
             logging.error(f"  {cmd_str}")

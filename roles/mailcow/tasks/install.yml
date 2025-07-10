@@ -6,9 +6,48 @@
   no_log: true
   register: stat_mailcow_repository
 
+- name: obtain git information from download path ({{ mailcow_tmp_directory }})
+  become: true
+  bodsch.scm.git_info:
+    work_dir: "{{ mailcow_tmp_directory }}"
+  register: mailcow_repository_information
+  when:
+    - stat_mailcow_repository.stat.exists | default('false')
+
+- name: define fact variables
+  ansible.builtin.set_fact:
+    mailcow_repository_version: "{{ mailcow_repository_information.git.version | default('master') }}"
+
+- name: repository version
+  ansible.builtin.debug:
+    msg: "{{ mailcow_repository_version }}"
+
+- name: reload vars
+  ansible.builtin.include_vars: "{{ lookup('first_found', params) }}"
+  vars:
+    params:
+      paths:
+        - "vars"
+      files:
+        - main.yml
+        # eg. debian-10 / ubuntu-20 / centos-8 / oraclelinux-8
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}.yml"
+        # eg. archlinux-systemd / archlinux-openrc
+        - "{{ ansible_distribution | lower }}-{{ ansible_service_mgr | lower }}.yml"
+        # eg. debian / ubuntu / centos / oraclelinux
+        - "{{ ansible_distribution | lower }}.yml"
+        # eg. redhat / debian
+        - "{{ ansible_os_family | lower }}.yml"
+        # artixlinux
+        - "{{ ansible_os_family | lower | replace(' ', '') }}.yml"
+        # artixlinux-openrc
+        - "{{ ansible_distribution | lower | replace(' ', '') }}-{{ ansible_service_mgr | lower }}.yml"
+        - default.yml
+      skip: true
+
 - name: detect installed mailcow updater
   ansible.builtin.stat:
-    path: "{{ mailcow_install_path }}/{{ mailcow_version }}/update.sh"
+    path: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}/update.sh"
   no_log: true
   register: stat_mailcow_installed
 
@@ -17,14 +56,6 @@
     path: "{{ mailcow_install_path }}/active/update.sh"
   no_log: true
   register: stat_mailcow_activated
-
-- name: obtain git information from download path ({{ mailcow_tmp_directory }})
-  become: true
-  bodsch.scm.git_info:
-    work_dir: "{{ mailcow_tmp_directory }}"
-  register: mailcow_repository_information
-  when:
-    - stat_mailcow_repository.stat.exists | default('false')
 
 - name: obtain git information from install path ({{ mailcow_install_path }}/active)
   become: true
@@ -58,33 +89,39 @@
     - _mailcow_new_version
   become: true
   block:
+    - name: create mailcow directory
+      ansible.builtin.file:
+        path: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}"
+        state: directory
+        mode: "0750"
+
     - name: install mailcow from git repository
       ansible.builtin.copy:
-        src: "{{ mailcow_tmp_directory }}"
-        dest: "{{ mailcow_install_path }}"
+        src: "{{ mailcow_tmp_directory }}/"
+        dest: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}/"
         mode: "0640"
         remote_src: true
 
     - name: create data/web/inc directory
       ansible.builtin.file:
-        path: "{{ mailcow_install_path }}/{{ mailcow_version }}/data/web/inc"
+        path: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}/data/web/inc"
         state: directory
         mode: "0750"
 
     - name: obtain git information for installed mailcow
       bodsch.scm.git_info:
-        work_dir: "{{ mailcow_install_path }}/{{ mailcow_version }}"
+        work_dir: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}"
       register: mailcow_information
 
     - name: define fact variable
       ansible.builtin.set_fact:
-        _mailcow_information: "{{ mailcow_information.git }}"
+        _mailcow_information: "{{ mailcow_information.git | default({}) }}"
 
     - name: create app_info.inc.php
       ansible.builtin.template:
         force: true
         src: data/web/inc/app_info.inc.php.j2
-        dest: "{{ mailcow_install_path }}/{{ mailcow_version }}/data/web/inc/app_info.inc.php"
+        dest: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}/data/web/inc/app_info.inc.php"
         owner: root
         group: root
         mode: "0640"
@@ -97,14 +134,24 @@
           commit: "{{ _mailcow_information.commit_short_id }}"
           commit_date: "{{ _mailcow_information.commit_date }}"
 
-- name: activate version {{ mailcow_version }}
+  rescue:
+    - name: delete install directory
+      ansible.builtin.file:
+        path: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}"
+        state: absent
+
+    - name: exit with fail
+      ansible.builtin.fail:
+        msg: A serious error occurred during the installation of the binary.
+
+- name: activate version {{ mailcow_repository_version }}
   when:
     - not running_in_check_mode
     - not _mailcow_activated
   block:
-    - name: create link from {{ mailcow_version }} to active
+    - name: create link from {{ mailcow_repository_version }} to active
       ansible.builtin.file:
-        src: "{{ mailcow_install_path }}/{{ mailcow_version }}"
+        src: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}"
         dest: "{{ mailcow_install_path }}/active"
         state: link
         force: true
@@ -115,7 +162,7 @@
   rescue:
     - name: delete install directory
       ansible.builtin.file:
-        path: "{{ mailcow_install_path }}/{{ mailcow_version }}"
+        path: "{{ mailcow_install_path }}/{{ mailcow_repository_version }}"
         state: absent
 
     - name: delete mailcow facts
@@ -130,6 +177,10 @@
 - name: merge mailcow configuration between defaults and custom
   ansible.builtin.set_fact:
     mailcow_config: "{{ mailcow_default_config | combine(mailcow_config, recursive=True) }}"
+
+- name: re-define mailcow_version
+  ansible.builtin.set_fact:
+    mailcow_version: "{{ mailcow_repository_version }}"
 
 - name: create docker-compose.d directory
   ansible.builtin.file:

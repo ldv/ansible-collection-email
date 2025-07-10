@@ -144,12 +144,12 @@ def test_service_running_and_enabled(host, get_vars):
     """
     service_name = "mailcow"
 
-    mailcow_service = get_vars.get("mailcow_service")
+    mailcow_service = get_vars.get("mailcow_services")
 
     service = host.service(service_name)
-    if mailcow_service.get("state") == "started":
+    if mailcow_service.get(service_name).get("state") == "started":
         assert service.is_running
-    if mailcow_service.get("enabled") == "true":
+    if mailcow_service.get(service_name).get("enabled") == "true":
         assert service.is_enabled
 
 
@@ -161,16 +161,21 @@ def test_listening_socket(host, get_vars):
     for i in listening:
         print(i)
 
-    listen = [
-        "tcp://0.0.0.0:110",
-        "tcp://0.0.0.0:143",
-        "tcp://0.0.0.0:993",
-        "tcp://0.0.0.0:995",
-    ]
+    service_name = "mailcow"
 
-    mailcow_service = get_vars.get("mailcow_service")
+    mailcow_service = get_vars.get("mailcow_services")
+    if mailcow_service.get(service_name).get("state") == "started":
 
-    for spec in listen:
-        socket = host.socket(spec)
-        if mailcow_service.get("state") == "started":
+
+        listen = [
+            "tcp://0.0.0.0:110",
+            "tcp://0.0.0.0:143",
+            "tcp://0.0.0.0:993",
+            "tcp://0.0.0.0:995",
+        ]
+
+        mailcow_service = get_vars.get("mailcow_service")
+
+        for spec in listen:
+            socket = host.socket(spec)
             assert socket.is_listening
