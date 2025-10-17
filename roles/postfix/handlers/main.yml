@@ -72,7 +72,7 @@
     path: "~postfix/pid/master.pid"
     state: absent
   listen: restart postfix
-  when: is_docker_guest
+  when: is_container_guest
 
 - name: validate config
   bodsch.email.postfix_check:
